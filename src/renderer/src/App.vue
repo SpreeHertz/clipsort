@@ -19,6 +19,7 @@ const ipcHandle = () => window.electron.ipcRenderer.send('ping')
     <div class="action">
       <a target="_blank" rel="noreferrer" @click="ipcHandle">Send IPC</a>
     </div>
+    
   </div>
   <Versions />
 </template>
