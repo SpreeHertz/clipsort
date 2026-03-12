@@ -1,5 +1,5 @@
 <script setup>
-import { ref,computed, watch, nextTick } from 'vue'
+import { ref,computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 
 const folder = ref(null)
 const clips = ref([])
@@ -9,6 +9,15 @@ const skipEnabled = ref(false)
 const skipSeconds = ref(10)
 const videoMounted = ref(true)
 const editedName = ref('')
+
+
+function handleKeydown(e) {
+  if (e.key === 'ArrowRight') next()
+  if (e.key === 'ArrowLeft') prev()
+}
+
+onMounted(() => window.addEventListener('keydown', handleKeydown))
+onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
 
 const currentClip = computed(() => clips.value[currentIndex.value])
 async function pickFolder() {
@@ -39,7 +48,7 @@ function handleVideoLoaded() {
 async function renameClip() {
   videoMounted.value = false
   await nextTick()
-
+  await new Promise(r => setTimeout(r, 150)) // to not rename too fast
   const newPath = await window.electron.ipcRenderer.invoke(
     'rename-clip',
     currentClip.value,
@@ -47,6 +56,24 @@ async function renameClip() {
   )
 
   clips.value[currentIndex.value] = newPath
+  videoMounted.value = true
+  next()
+
+}
+
+async function deleteClip() {
+  videoMounted.value = false
+  await nextTick()
+
+  await window.electron.ipcRenderer.invoke('delete-clip', currentClip.value)
+
+  clips.value.splice(currentIndex.value, 1)
+
+  // stay in bounds
+  if (currentIndex.value >= clips.value.length) {
+    currentIndex.value = clips.value.length - 1
+  }
+
   videoMounted.value = true
 }
 
@@ -83,7 +110,7 @@ async function renameClip() {
     <input v-model="editedName" @keyup.enter="renameClip" />
     <button @click="renameClip">Rename</button>
   </div>
-
+<button @click="deleteClip">🗑 Delete (permanent)</button>
     </div>
   </div>
 </template>

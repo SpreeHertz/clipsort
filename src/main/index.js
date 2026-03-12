@@ -3,6 +3,9 @@ import { join,dirname } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import fs from 'fs'
+import ffmpeg from 'ffmpeg-static'
+console.log(ffmpeg) // should be a file path string
+
 function createWindow() {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
@@ -104,8 +107,14 @@ ipcMain.handle('get-clips', async (_, folderPath) => {
 })
 
 ipcMain.handle('rename-clip', async (_, oldPath, newName) => {
+  if (!newName || newName.trim() === '') return oldPath // do nothing
   const dir = dirname(oldPath)
-  const newPath = join(dir, newName + '.mp4')
+  const newPath = join(dir, newName.trim() + '.mp4')
   fs.renameSync(oldPath, newPath)
   return newPath
 })
+
+ipcMain.handle('delete-clip', async (_, filePath) => {
+  fs.unlinkSync(filePath)
+})
+
