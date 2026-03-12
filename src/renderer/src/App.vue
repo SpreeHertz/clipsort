@@ -1,25 +1,111 @@
 <script setup>
-import Versions from './components/Versions.vue'
+import { ref,computed, watch, nextTick } from 'vue'
 
-const ipcHandle = () => window.electron.ipcRenderer.send('ping')
+const folder = ref(null)
+const clips = ref([])
+const currentIndex = ref(0)
+const videoEl = ref(null)
+const skipEnabled = ref(false)
+const skipSeconds = ref(10)
+const videoMounted = ref(true)
+const editedName = ref('')
+
+const currentClip = computed(() => clips.value[currentIndex.value])
+async function pickFolder() {
+  folder.value = await window.electron.ipcRenderer.invoke('select-folder')
+  if (folder.value) {
+    clips.value = await window.electron.ipcRenderer.invoke('get-clips', folder.value)
+  }
+}
+function next() {
+  if (currentIndex.value < clips.value.length - 1) currentIndex.value++
+}
+
+function prev() {
+  if (currentIndex.value > 0) currentIndex.value--
+}
+
+watch(currentIndex, () => {
+  editedName.value = currentClip.value.split('\\').pop().replace('.mp4', '')
+})
+
+function handleVideoLoaded() {
+  if (!skipEnabled.value) return
+  const duration = videoEl.value.duration
+  const target = duration - skipSeconds.value
+  if (target > 0) videoEl.value.currentTime = target
+}
+
+async function renameClip() {
+  videoMounted.value = false
+  await nextTick()
+
+  const newPath = await window.electron.ipcRenderer.invoke(
+    'rename-clip',
+    currentClip.value,
+    editedName.value
+  )
+
+  clips.value[currentIndex.value] = newPath
+  videoMounted.value = true
+}
+
 </script>
 
 <template>
-  <img alt="logo" class="logo" src="./assets/electron.svg" />
-  <div class="creator">Powered by electron-vite</div>
-  <div class="text">
-    Build an Electron app with
-    <span class="vue">Vue 3</span>
+  <div>
+    <button @click="pickFolder" class="choose-clips-btn">Choose Clips Folder</button>
+
+    <div v-if="clips.length">
+          <video
+      v-if="videoMounted"
+      :key="currentClip"
+      :src="`file:///${currentClip.replaceAll('\\', '/')}`"
+      controls
+      autoplay
+      ref="videoEl"
+      @loadedmetadata="handleVideoLoaded"
+      style="width: 100%; max-height: 80vh;"
+    />
+      <div class="navigate">
+      <button @click="prev">← Prev</button>
+      <button @click="next">Next →</button>
+      </div>
+       <div>
+    <label>
+      <input type="checkbox" v-model="skipEnabled" /> Skip to last
+    </label>
+    <input type="number" v-model="skipSeconds" min="1" style="width: 50px" />
+    <span>seconds</span>
   </div>
-  <p class="tip">Please try pressing <code>F12</code> to open the devTool</p>
-  <div class="actions">
-    <div class="action">
-      <a href="https://electron-vite.org/" target="_blank" rel="noreferrer">Documentation</a>
-    </div>
-    <div class="action">
-      <a target="_blank" rel="noreferrer" @click="ipcHandle">Send IPC</a>
-    </div>
-    
+  
+   <div>
+    <input v-model="editedName" @keyup.enter="renameClip" />
+    <button @click="renameClip">Rename</button>
   </div>
-  <Versions />
+
+    </div>
+  </div>
 </template>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+* {
+  font-family: 'Inter', sans-serif;
+}
+
+.choose-clips-btn {
+  padding: 10px;
+  color: white;
+  background-color: #383838;
+  border: none;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+}
+
+.choose-clips-btn:hover {
+  background-color: #232323;
+}
+
+
+</style>

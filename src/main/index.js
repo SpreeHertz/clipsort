@@ -1,8 +1,8 @@
 import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
-import { join } from 'path'
+import { join,dirname } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-
+import fs from 'fs'
 function createWindow() {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
@@ -13,7 +13,8 @@ function createWindow() {
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
+      sandbox: false,
+      webSecurity: false,
     }
   })
 
@@ -76,7 +77,35 @@ ipcMain.handle('select-folder', async () => {
   const result = await dialog.showOpenDialog({
     properties: ['openDirectory']
   })
-
   if (result.canceled) return null
+  if (result.filePaths) console.log(result.filePaths)
   return result.filePaths[0]
+  
+})
+
+function getClipsRecursively(dir) {
+  let results = []
+  const entries = fs.readdirSync(dir, { withFileTypes: true })
+  
+  for (const entry of entries) {
+    const fullPath = join(dir, entry.name)
+    if (entry.isDirectory()) {
+      results = results.concat(getClipsRecursively(fullPath))
+    } else if (entry.name.endsWith('.mp4')) {
+      results.push(fullPath)
+    }
+  }
+  
+  return results
+}
+
+ipcMain.handle('get-clips', async (_, folderPath) => {
+  return getClipsRecursively(folderPath)
+})
+
+ipcMain.handle('rename-clip', async (_, oldPath, newName) => {
+  const dir = dirname(oldPath)
+  const newPath = join(dir, newName + '.mp4')
+  fs.renameSync(oldPath, newPath)
+  return newPath
 })
