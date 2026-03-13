@@ -110,9 +110,17 @@ async function pickFolder() {
 async function renameClip() {
   videoMounted.value = false
   await nextTick()
-  await new Promise(r => setTimeout(r, 150))
-  const newPath = await window.electron.ipcRenderer.invoke('rename-clip', currentClip.value, editedName.value)
-  clips.value[currentIndex.value] = newPath
+  await new Promise(r => setTimeout(r, 300)) // increased from 150
+  
+  const result = await window.electron.ipcRenderer.invoke('rename-clip', currentClip.value, editedName.value)
+  
+  if (!result.success) {
+    alert('Could not rename — file still in use. Try again.')
+    videoMounted.value = true
+    return
+  }
+  
+  clips.value[currentIndex.value] = result.path
   videoMounted.value = true
   next()
 }
@@ -184,6 +192,7 @@ function queueThumb(clip, el) {
 
 function handleKeydown(e) {
   if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+    if (document.activeElement?.classList.contains('rename-field')) return
     e.preventDefault()
   }
   if (e.code === 'Space') togglePlay()
@@ -293,6 +302,8 @@ onUnmounted(() => {
           <div class="toggle-knob" />
         </div>
       </div>
+      <button class="abar-btn" @click="pickFolder">Change Folder</button>
+<div class="divider" />
     </div>
 
     <!-- BOTTOM ROW -->

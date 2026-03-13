@@ -86,12 +86,26 @@ ipcMain.handle('get-clips', async (_, folderPath) => {
 })
 
 ipcMain.handle('rename-clip', async (_, oldPath, newName) => {
-  if (!newName || newName.trim() === '') return oldPath
+  if (!newName || newName.trim() === '') return { success: false, path: oldPath }
+  
   const dir = dirname(oldPath)
-  const ext = oldPath.toLowerCase().endsWith('.mp4') ? '.mp4' : '.MP4'
+  const ext = oldPath.endsWith('.MP4') ? '.MP4' : '.mp4'
   const newPath = join(dir, newName.trim() + ext)
-  fs.renameSync(oldPath, newPath)
-  return newPath
+  
+  const wait = (ms) => new Promise(r => setTimeout(r, ms))
+  
+  for (let i = 0; i < 5; i++) {
+    try {
+      fs.renameSync(oldPath, newPath)
+      return { success: true, path: newPath }
+    } catch (err) {
+      if (err.code === 'EBUSY' && i < 4) {
+        await wait(300 * (i + 1))
+      } else {
+        return { success: false, path: oldPath, error: err.message }
+      }
+    }
+  }
 })
 
 // FIX: retry loop for EBUSY
