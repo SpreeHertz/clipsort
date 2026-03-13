@@ -157,4 +157,27 @@ ipcMain.handle('load-state', () => readState())
 
 ipcMain.handle('save-state', (_, data) => {
   fs.writeFileSync(statePath, JSON.stringify(data))
+  
+})
+
+ipcMain.handle('get-scrub-thumbnails', async (_, videoPath, duration) => {
+  const count = 10
+  const paths = []
+
+  for (let i = 0; i <= count; i++) {
+    const time = (i / count) * duration  // percentage-based, not fixed interval
+    const outPath = join(os.tmpdir(), `scrub_${Date.now()}_${i}.jpg`)
+    await new Promise((resolve) => {
+      execFile(ffmpeg, [
+        '-ss', String(time),
+        '-i', videoPath,
+        '-vframes', '1',
+        '-vf', 'scale=160:-1',
+        outPath
+      ], () => resolve())
+    })
+    paths.push({ time, path: outPath })
+  }
+
+  return paths
 })

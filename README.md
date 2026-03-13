@@ -1,6 +1,8 @@
 # clipsorter
 
 An Electron application with Vue
+DELETE DOES PERMA DELETE BTW
+
 
 ## Recommended IDE Setup
 

@@ -15,8 +15,11 @@ const playing = ref(true)
 const currentTime = ref('0:00')
 const totalDuration = ref('0:00')
 const currentClip = computed(() => clips.value[currentIndex.value])
-
-// ── Playback ───────────────────────────────────────────────────────────────────
+const scrubThumbs = ref([])  // [{ time, path }]
+const hoverTime = ref(null)
+const hoverX = ref(0)
+const hoverThumb = ref(null)
+// Playback
 
 function togglePlay() {
   if (!videoEl.value) return
@@ -43,11 +46,46 @@ function updateProgress() {
   currentTime.value = formatTime(videoEl.value.currentTime)
 }
 
+
+// call this after video loads
+async function loadScrubThumbs() {
+  scrubThumbs.value = []
+  if (!videoEl.value) return
+  const duration = videoEl.value.duration
+  scrubThumbs.value = await window.electron.ipcRenderer.invoke(
+    'get-scrub-thumbnails',
+    currentClip.value,
+    duration
+  )
+}
+
 function handleVideoLoaded() {
   totalDuration.value = formatTime(videoEl.value.duration)
+  loadScrubThumbs()
   if (!skipEnabled.value) return
   const target = videoEl.value.duration - skipSeconds.value
   if (target > 0) videoEl.value.currentTime = target
+}
+
+// Hovering
+
+function onProgressHover(e) {
+  const rect = e.currentTarget.getBoundingClientRect()
+  const pct = (e.clientX - rect.left) / rect.width
+  const time = pct * videoEl.value.duration
+  hoverTime.value = formatTime(time)
+  hoverX.value = e.clientX - rect.left
+
+  // find closest scrub thumbnail
+  const closest = scrubThumbs.value.reduce((prev, curr) =>
+    Math.abs(curr.time - time) < Math.abs(prev.time - time) ? curr : prev
+  , scrubThumbs.value[0])
+  hoverThumb.value = closest?.path ?? null
+}
+
+function onProgressLeave() {
+  hoverTime.value = null
+  hoverThumb.value = null
 }
 
 function seek(e) {
@@ -70,6 +108,7 @@ function prev() {
 watch(currentIndex, (i) => {
   playing.value = true
   editedName.value = currentClip.value.split('\\').pop().replace(/\.mp4$/i, '')
+  scrubThumbs.value = []  // ← clear old thumbs
   saveState()
 })
 
@@ -79,7 +118,9 @@ async function saveState() {
   if (!folder.value) return
   await window.electron.ipcRenderer.invoke('save-state', {
     folder: folder.value,
-    index: currentIndex.value
+    index: currentIndex.value,
+    skipEnabled: skipEnabled.value,
+    skipSeconds: skipSeconds.value
   })
 }
 
@@ -87,6 +128,7 @@ async function loadState() {
   return await window.electron.ipcRenderer.invoke('load-state')
 }
 
+watch([skipEnabled, skipSeconds], saveState)
 // Folder / clips
 
 async function initClips(folderPath, savedIndex = 0) {
@@ -232,56 +274,78 @@ onUnmounted(() => {
   <div v-else class="root">
 
     <div class="video-wrap">
-      <video
-        v-if="videoMounted"
-        ref="videoEl"
-        :key="currentClip"
-        :src="`file:///${currentClip.replaceAll('\\', '/')}`"
-        autoplay
-        @loadedmetadata="handleVideoLoaded"
-        @error="(e) => console.log('video error', e)"
-        @timeupdate="updateProgress"
-        class="video-el"
-      />
+  <video
+    v-if="videoMounted"
+    ref="videoEl"
+    :key="currentClip"
+    :src="`file:///${currentClip.replaceAll('\\', '/')}`"
+    autoplay
+    @loadedmetadata="handleVideoLoaded"
+    @error="(e) => console.log('video error', e)"
+    @timeupdate="updateProgress"
+    class="video-el"
+  />
 
-      <!-- gradient overlay with title + meta -->
-      <div class="overlay">
-        <div class="overlay-title">{{ editedName }}</div>
-        <div class="overlay-meta">
-          <span class="counter">{{ currentIndex + 1 }}<span class="counter-sep">/</span>{{ clips.length }}</span>
-          <span class="duration">{{ currentTime }} / {{ totalDuration }}</span>
-        </div>
+  <!-- overlay: gradient + title + counter -->
+  <div class="overlay">
+    <div class="overlay-title">{{ currentClip?.split('\\').pop().replace(/\.mp4$/i, '') }}</div>
+    <div class="overlay-meta">
+      <span class="counter">{{ currentIndex + 1 }}<span class="counter-sep">/</span>{{ clips.length }}</span>
+    </div>
+  </div>
+
+  <!-- controls: progress bar + transport -->
+  <div class="controls-row">
+    <div class="progress-section">
+      <div class="progress-timestamps">
+        <span class="duration-label">{{ currentTime }}</span>
+        <span class="duration-label">{{ totalDuration }}</span>
       </div>
-
-      <!-- transport controls -->
-      <div class="transport-row">
-        <button class="tbtn" @click="prev">
-          <svg width="18" height="18" viewBox="0 0 32 28" xmlns="http://www.w3.org/2000/svg">
-            <path transform="scale(-1,1) translate(-32,0)" d="M18.14 20.68c.365 0 .672-.107 1.038-.323l8.508-4.997c.623-.365.938-.814.938-1.37 0-.564-.307-.988-.938-1.361l-8.508-4.997c-.366-.216-.68-.324-1.046-.324-.73 0-1.337.556-1.337 1.569v4.773c-.108-.399-.406-.73-.904-1.021L7.382 7.632c-.357-.216-.672-.324-1.037-.324-.73 0-1.345.556-1.345 1.569v10.235c0 1.013.614 1.569 1.345 1.569.365 0 .68-.108 1.037-.324l8.509-4.997c.49-.29.796-.631.904-1.038v4.79c0 1.013.615 1.569 1.345 1.569z" fill="currentColor" fill-rule="nonzero"/>
-          </svg>
-        </button>
-        <button class="tbtn main" @click="togglePlay">
-          <svg v-if="!playing" width="22" height="22" viewBox="0 0 22 22" fill="none">
-            <path d="M7 4l12 7-12 7V4z" fill="currentColor"/>
-          </svg>
-          <svg v-else width="22" height="22" viewBox="0 0 22 22" fill="none">
-            <rect x="5" y="4" width="4" height="14" rx="1" fill="currentColor"/>
-            <rect x="13" y="4" width="4" height="14" rx="1" fill="currentColor"/>
-          </svg>
-        </button>
-        <button class="tbtn" @click="next">
-          <svg width="18" height="18" viewBox="0 0 32 28" xmlns="http://www.w3.org/2000/svg">
-            <path d="M18.14 20.68c.365 0 .672-.107 1.038-.323l8.508-4.997c.623-.365.938-.814.938-1.37 0-.564-.307-.988-.938-1.361l-8.508-4.997c-.366-.216-.68-.324-1.046-.324-.73 0-1.337.556-1.337 1.569v4.773c-.108-.399-.406-.73-.904-1.021L7.382 7.632c-.357-.216-.672-.324-1.037-.324-.73 0-1.345.556-1.345 1.569v10.235c0 1.013.614 1.569 1.345 1.569.365 0 .68-.108 1.037-.324l8.509-4.997c.49-.29.796-.631.904-1.038v4.79c0 1.013.615 1.569 1.345 1.569z" fill="currentColor" fill-rule="nonzero"/>
-          </svg>
-        </button>
-      </div>
-
-      <!-- seekable progress bar, always flush at bottom -->
-      <div class="progress-bar" @click="seek">
+      <div
+        class="progress-bar"
+        @click="seek"
+        @mousemove="onProgressHover"
+        @mouseleave="onProgressLeave"
+      >
         <div class="progress-fill" ref="progressFill" />
+        <div
+          v-if="hoverTime"
+          class="scrub-popup"
+          :style="{ left: hoverX + 'px' }"
+        >
+          <img
+            v-if="hoverThumb"
+            :src="`file:///${hoverThumb.replace(/\\/g, '/')}`"
+            class="scrub-thumb"
+          />
+          <span class="scrub-time">{{ hoverTime }}</span>
+        </div>
       </div>
     </div>
 
+    <div class="transport-row">
+      <button class="tbtn" @click="prev">
+        <svg width="18" height="18" viewBox="0 0 32 28" xmlns="http://www.w3.org/2000/svg">
+          <path transform="scale(-1,1) translate(-32,0)" d="M18.14 20.68c.365 0 .672-.107 1.038-.323l8.508-4.997c.623-.365.938-.814.938-1.37 0-.564-.307-.988-.938-1.361l-8.508-4.997c-.366-.216-.68-.324-1.046-.324-.73 0-1.337.556-1.337 1.569v4.773c-.108-.399-.406-.73-.904-1.021L7.382 7.632c-.357-.216-.672-.324-1.037-.324-.73 0-1.345.556-1.345 1.569v10.235c0 1.013.614 1.569 1.345 1.569.365 0 .68-.108 1.037-.324l8.509-4.997c.49-.29.796-.631.904-1.038v4.79c0 1.013.615 1.569 1.345 1.569z" fill="currentColor" fill-rule="nonzero"/>
+        </svg>
+      </button>
+      <button class="tbtn main" @click="togglePlay">
+        <svg v-if="!playing" width="22" height="22" viewBox="0 0 22 22" fill="none">
+          <path d="M7 4l12 7-12 7V4z" fill="currentColor"/>
+        </svg>
+        <svg v-else width="22" height="22" viewBox="0 0 22 22" fill="none">
+          <rect x="5" y="4" width="4" height="14" rx="1" fill="currentColor"/>
+          <rect x="13" y="4" width="4" height="14" rx="1" fill="currentColor"/>
+        </svg>
+      </button>
+      <button class="tbtn" @click="next">
+        <svg width="18" height="18" viewBox="0 0 32 28" xmlns="http://www.w3.org/2000/svg">
+          <path d="M18.14 20.68c.365 0 .672-.107 1.038-.323l8.508-4.997c.623-.365.938-.814.938-1.37 0-.564-.307-.988-.938-1.361l-8.508-4.997c-.366-.216-.68-.324-1.046-.324-.73 0-1.337.556-1.337 1.569v4.773c-.108-.399-.406-.73-.904-1.021L7.382 7.632c-.357-.216-.672-.324-1.037-.324-.73 0-1.345.556-1.345 1.569v10.235c0 1.013.614 1.569 1.345 1.569.365 0 .68-.108 1.037-.324l8.509-4.997c.49-.29.796-.631.904-1.038v4.79c0 1.013.615 1.569 1.345 1.569z" fill="currentColor" fill-rule="nonzero"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>
     <!-- ACTION BAR -->
     <div class="action-bar">
       <input
@@ -290,7 +354,7 @@ onUnmounted(() => {
         @keyup.enter="renameClip"
         placeholder="rename clip…"
       />
-      <button class="abar-btn" @click="renameClip">Rename ↵</button>
+      <button class="abar-btn" @click="renameClip">Rename</button>
       <div class="divider" />
       <button class="abar-btn del" @click="deleteClip">Delete</button>
       <div class="divider" />
@@ -338,7 +402,7 @@ onUnmounted(() => {
         <span class="hint"><span class="kbd">←</span><span class="kbd">→</span> navigate</span>
         <span class="hint"><span class="kbd">Space</span> play/pause</span>
         <span class="hint"><span class="kbd">↵</span> rename & next</span>
-        <span class="hint"><span class="kbd">Del</span> delete</span>
+        <span class="hint"><span class="kbd">Del</span> delete (permanent)</span>
       </div>
     </div>
   </div>
@@ -398,50 +462,43 @@ html, body { background: #000; color: #fff; height: 100%; }
 .overlay {
   position: absolute;
   bottom: 0; left: 0; right: 0;
-  padding: 80px 28px 56px;
-  background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 100%);
+  padding: 120px 28px 75px;
+  background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.4) 40%, transparent 100%);
   pointer-events: none;
   z-index: 5;
 }
 .overlay-title {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
   letter-spacing: -0.02em;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.overlay-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.counter {
-  font-size: 12px;
-  font-weight: 600;
-  color: #fff;
-  letter-spacing: 0.02em;
-}
+.overlay-meta { display: flex; flex-direction: column; gap: 2px; }
+.counter { font-size: 13px; font-weight: 400; color: rgba(255,255,255,0.5); }
 .counter-sep { color: rgba(255,255,255,0.25); margin: 0 3px; }
-.duration {
+
+
+.counter {
   font-size: 11px;
-  font-weight: 300;
-  color: rgba(255,255,255,0.4);
-  font-variant-numeric: tabular-nums;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.636);  /* dimmer, subordinate to title */
 }
 
-/* ── TRANSPORT ── */
-.transport-row {
-  position: absolute;
-  bottom: 12px;
-  left: 28px;
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  z-index: 10;
-  pointer-events: all;
+.duration-label { font-size: 11px; font-weight: 300; color: rgba(255,255,255,0.4); font-variant-numeric: tabular-nums; }
+
+
+.counter-sep { color: rgba(255,255,255,0.25); margin: 0 3px; }
+
+
+.duration {
+  font-size: 11px;
+  color: rgba(255,255,255,0.3);
 }
+/* ── TRANSPORT ── */
+
 .tbtn {
   background: none;
   border: none;
@@ -455,27 +512,6 @@ html, body { background: #000; color: #fff; height: 100%; }
 .tbtn:hover { color: #fff; }
 .tbtn.main { color: #fff; }
 .tbtn.main:hover { color: rgba(255,255,255,0.6); }
-
-/* ── PROGRESS BAR ── */
-.progress-bar {
-  position: absolute;
-  bottom: 0; left: 0; right: 0;
-  height: 4px;
-  background: rgba(255,255,255,0.15);
-  cursor: pointer;
-  z-index: 20;
-  pointer-events: all;
-  transition: height 0.15s;
-}
-.progress-bar:hover { height: 6px; }
-.progress-fill {
-  height: 100%;
-  width: 0%;
-  background: #fff;
-  border-radius: 2px;
-  pointer-events: none;
-  transition: width 0.4s linear;
-}
 
 /* ── ACTION BAR ── */
 .action-bar {
@@ -641,4 +677,88 @@ input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
   font-size: 11px;
   color: rgba(255,255,255,0.32);
 }
+
+.controls-row {
+  position: absolute;
+  bottom: 6px;
+  left: 16px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 10;
+  pointer-events: all;
+}
+
+.progress-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.progress-timestamps {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 2px;
+}
+.progress-bar {
+  position: relative;
+  width: 100%;
+  height: 4px;
+  background: rgba(255,255,255,0.15);
+  cursor: pointer;
+  border-radius: 9px;
+  transition: height 0.15s;
+}
+.progress-bar:hover { height: 6px; }
+
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: #fff;
+  border-radius: 9px;
+  pointer-events: none;
+  transition: width 0.4s linear;
+}
+
+.scrub-popup {
+  position: absolute;
+  bottom: 16px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.scrub-thumb {
+  width: 160px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.15);
+}
+
+.scrub-time {
+  font-size: 11px;
+  font-weight: 500;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  background: rgba(0,0,0,0.6);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.transport-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  pointer-events: all;
+}
+
+
 </style>
