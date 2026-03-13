@@ -10,9 +10,13 @@ const skipSeconds = ref(10)
 const videoMounted = ref(true)
 const editedName = ref('')
 const thumbnails = ref({})
+const progressFill = ref(null)
+const playing = ref(true)
+const currentTime = ref('0:00')
+const totalDuration = ref('0:00')
 const currentClip = computed(() => clips.value[currentIndex.value])
 
-const playing = ref(true)
+// ── Playback ───────────────────────────────────────────────────────────────────
 
 function togglePlay() {
   if (!videoEl.value) return
@@ -25,30 +29,35 @@ function togglePlay() {
   }
 }
 
-// reset playing state when clip changes
-watch(currentIndex, (i) => {
-  playing.value = true
-  editedName.value = currentClip.value.split('\\').pop().replace('.mp4', '')
-  if (folder.value) localStorage.setItem(`clipIndex:${folder.value}`, i)
-  playing.value = true
-  editedName.value = currentClip.value.split('\\').pop().replace('.mp4', '')
-})
-
-
-async function pickFolder() {
-  folder.value = await window.electron.ipcRenderer.invoke('select-folder')
-  if (folder.value) {
-    clips.value = await window.electron.ipcRenderer.invoke('get-clips', folder.value)
-    // Restore saved index
-    const saved = localStorage.getItem(`clipIndex:${folder.value}`)
-    currentIndex.value = saved ? Math.min(parseInt(saved), clips.value.length - 1) : 0
-    if (clips.value.length > 0) {
-      editedName.value = clips.value[0].split('\\').pop().replace('.mp4', '')
-    }
-    
-  }
-
+function formatTime(s) {
+  if (!s || isNaN(s)) return '0:00'
+  const m = Math.floor(s / 60)
+  const sec = Math.floor(s % 60).toString().padStart(2, '0')
+  return `${m}:${sec}`
 }
+
+function updateProgress() {
+  if (!videoEl.value || !progressFill.value) return
+  const pct = (videoEl.value.currentTime / videoEl.value.duration) * 100
+  progressFill.value.style.width = pct + '%'
+  currentTime.value = formatTime(videoEl.value.currentTime)
+}
+
+function handleVideoLoaded() {
+  totalDuration.value = formatTime(videoEl.value.duration)
+  if (!skipEnabled.value) return
+  const target = videoEl.value.duration - skipSeconds.value
+  if (target > 0) videoEl.value.currentTime = target
+}
+
+function seek(e) {
+  if (!videoEl.value) return
+  const rect = e.currentTarget.getBoundingClientRect()
+  const pct = (e.clientX - rect.left) / rect.width
+  videoEl.value.currentTime = pct * videoEl.value.duration
+}
+
+// Navigation
 
 function next() {
   if (currentIndex.value < clips.value.length - 1) currentIndex.value++
@@ -58,22 +67,45 @@ function prev() {
   if (currentIndex.value > 0) currentIndex.value--
 }
 
+watch(currentIndex, (i) => {
+  playing.value = true
+  editedName.value = currentClip.value.split('\\').pop().replace(/\.mp4$/i, '')
+  saveState()
+})
 
-function handleVideoLoaded() {
-  if (!skipEnabled.value) return
-  const duration = videoEl.value.duration
-  const target = duration - skipSeconds.value
-  if (target > 0) videoEl.value.currentTime = target
-  
+// State persistence
+
+async function saveState() {
+  if (!folder.value) return
+  await window.electron.ipcRenderer.invoke('save-state', {
+    folder: folder.value,
+    index: currentIndex.value
+  })
 }
 
-function updateProgress() {
-  if (!videoEl.value) return
-  const pct = (videoEl.value.currentTime / videoEl.value.duration) * 100
-  if (progressFill.value) progressFill.value.style.width = pct + '%'
+async function loadState() {
+  return await window.electron.ipcRenderer.invoke('load-state')
 }
 
-const progressFill = ref(null)
+// Folder / clips
+
+async function initClips(folderPath, savedIndex = 0) {
+  clips.value = await window.electron.ipcRenderer.invoke('get-clips', folderPath)
+  if (!clips.value.length) return false
+  currentIndex.value = Math.min(savedIndex, clips.value.length - 1)
+  editedName.value = clips.value[currentIndex.value].split('\\').pop().replace(/\.mp4$/i, '')
+  return true
+}
+
+async function pickFolder() {
+  const picked = await window.electron.ipcRenderer.invoke('select-folder')
+  if (!picked) return
+  folder.value = picked
+  const ok = await initClips(picked, 0)
+  if (ok) await saveState()
+}
+
+//  Rename / Delete
 
 async function renameClip() {
   videoMounted.value = false
@@ -88,33 +120,93 @@ async function renameClip() {
 async function deleteClip() {
   videoMounted.value = false
   await nextTick()
-  await window.electron.ipcRenderer.invoke('delete-clip', currentClip.value)
+  await new Promise(r => setTimeout(r, 300))
+
+  const result = await window.electron.ipcRenderer.invoke('delete-clip', currentClip.value)
+
+  if (!result.success) {
+    alert('Could not delete — file still in use. Try again.')
+    videoMounted.value = true
+    return
+  }
+
   clips.value.splice(currentIndex.value, 1)
-  if (currentIndex.value >= clips.value.length) currentIndex.value = clips.value.length - 1
+
+  if (clips.value.length === 0) {
+    folder.value = null
+    videoMounted.value = true
+    return
+  }
+
+  if (currentIndex.value >= clips.value.length) {
+    currentIndex.value = clips.value.length - 1
+  }
+
   videoMounted.value = true
+  await saveState()
 }
 
+//  Thumbnails
+
+const thumbQueue = []
+let thumbWorking = false
+
+async function processThumbQueue() {
+  if (thumbWorking) return
+  thumbWorking = true
+  while (thumbQueue.length) {
+    const clip = thumbQueue.shift()
+    if (!thumbnails.value[clip]) {
+      try {
+        const path = await window.electron.ipcRenderer.invoke('get-thumbnail', clip)
+        thumbnails.value[clip] = path
+      } catch {
+        // skip silently
+      }
+    }
+  }
+  thumbWorking = false
+}
+
+function queueThumb(clip, el) {
+  if (!el || thumbnails.value[clip] || thumbQueue.includes(clip)) return
+  const observer = new IntersectionObserver(([entry]) => {
+    if (entry.isIntersecting) {
+      thumbQueue.push(clip)
+      processThumbQueue()
+      observer.disconnect()
+    }
+  }, { threshold: 0.1 })
+  observer.observe(el)
+}
+
+// Keyboard 
+
 function handleKeydown(e) {
+  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+    e.preventDefault()
+  }
+  if (e.code === 'Space') togglePlay()
   if (e.key === 'ArrowRight') next()
   if (e.key === 'ArrowLeft') prev()
   if (e.key === 'Enter') renameClip()
   if (e.key === 'Delete') deleteClip()
 }
 
-onMounted(() => window.addEventListener('keydown', handleKeydown))
-onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
+//  Lifecycle
 
-
-
-async function loadThumbnails() {
-  for (const clip of clips.value) {
-    const path = await window.electron.ipcRenderer.invoke('get-thumbnail', clip)
-    thumbnails.value[clip] = path
+onMounted(async () => {
+  window.addEventListener('keydown', handleKeydown)
+  const state = await loadState()
+  if (state?.folder) {
+    folder.value = state.folder
+    await initClips(state.folder, state.index ?? 0)
   }
-}
+})
 
-
-
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeydown)
+})
 </script>
 
 <template>
@@ -130,7 +222,6 @@ async function loadThumbnails() {
   <!-- PLAYER -->
   <div v-else class="root">
 
-    <!-- VIDEO -->
     <div class="video-wrap">
       <video
         v-if="videoMounted"
@@ -139,42 +230,47 @@ async function loadThumbnails() {
         :src="`file:///${currentClip.replaceAll('\\', '/')}`"
         autoplay
         @loadedmetadata="handleVideoLoaded"
-        @canplay="() => console.log('canplay', videoEl.clientWidth, videoEl.clientHeight)"
-        @error="(e) => console.log('error', e)"
+        @error="(e) => console.log('video error', e)"
         @timeupdate="updateProgress"
         class="video-el"
       />
+
+      <!-- gradient overlay with title + meta -->
       <div class="overlay">
         <div class="overlay-title">{{ editedName }}</div>
-        <div class="overlay-sub">{{ currentIndex + 1 }} / {{ clips.length }}</div>
-        <div class="progress-track">
- <div class="transport-row">
-  <button class="tbtn" @click="prev">
-     <svg width="18" height="18" viewBox="0 0 32 28" xmlns="http://www.w3.org/2000/svg">
-    <path transform="scale(-1,1) translate(-32,0)" d="M18.14 20.68c.365 0 .672-.107 1.038-.323l8.508-4.997c.623-.365.938-.814.938-1.37 0-.564-.307-.988-.938-1.361l-8.508-4.997c-.366-.216-.68-.324-1.046-.324-.73 0-1.337.556-1.337 1.569v4.773c-.108-.399-.406-.73-.904-1.021L7.382 7.632c-.357-.216-.672-.324-1.037-.324-.73 0-1.345.556-1.345 1.569v10.235c0 1.013.614 1.569 1.345 1.569.365 0 .68-.108 1.037-.324l8.509-4.997c.49-.29.796-.631.904-1.038v4.79c0 1.013.615 1.569 1.345 1.569z" fill="currentColor" fill-rule="nonzero"/>
-  </svg>
-
-  </button>
-  <button class="tbtn main" @click="togglePlay">
-    <svg v-if="!playing" width="22" height="22" viewBox="0 0 22 22" fill="none">
-      <path d="M7 4l12 7-12 7V4z" fill="currentColor"/>
-    </svg>
-    <svg v-else width="22" height="22" viewBox="0 0 22 22" fill="none">
-      <rect x="5" y="4" width="4" height="14" rx="1" fill="currentColor"/>
-      <rect x="13" y="4" width="4" height="14" rx="1" fill="currentColor"/>
-    </svg>
-  </button>
-  <button class="tbtn" @click="next">
-   <svg width="18" height="18" viewBox="0 0 32 28" xmlns="http://www.w3.org/2000/svg">
-    <path d="M18.14 20.68c.365 0 .672-.107 1.038-.323l8.508-4.997c.623-.365.938-.814.938-1.37 0-.564-.307-.988-.938-1.361l-8.508-4.997c-.366-.216-.68-.324-1.046-.324-.73 0-1.337.556-1.337 1.569v4.773c-.108-.399-.406-.73-.904-1.021L7.382 7.632c-.357-.216-.672-.324-1.037-.324-.73 0-1.345.556-1.345 1.569v10.235c0 1.013.614 1.569 1.345 1.569.365 0 .68-.108 1.037-.324l8.509-4.997c.49-.29.796-.631.904-1.038v4.79c0 1.013.615 1.569 1.345 1.569z" fill="currentColor" fill-rule="nonzero"/>
-  </svg>
-
-  </button>
-  </div>
+        <div class="overlay-meta">
+          <span class="counter">{{ currentIndex + 1 }}<span class="counter-sep">/</span>{{ clips.length }}</span>
+          <span class="duration">{{ currentTime }} / {{ totalDuration }}</span>
         </div>
       </div>
-          <div class="progress-fill" ref="progressFill" />
-         
+
+      <!-- transport controls -->
+      <div class="transport-row">
+        <button class="tbtn" @click="prev">
+          <svg width="18" height="18" viewBox="0 0 32 28" xmlns="http://www.w3.org/2000/svg">
+            <path transform="scale(-1,1) translate(-32,0)" d="M18.14 20.68c.365 0 .672-.107 1.038-.323l8.508-4.997c.623-.365.938-.814.938-1.37 0-.564-.307-.988-.938-1.361l-8.508-4.997c-.366-.216-.68-.324-1.046-.324-.73 0-1.337.556-1.337 1.569v4.773c-.108-.399-.406-.73-.904-1.021L7.382 7.632c-.357-.216-.672-.324-1.037-.324-.73 0-1.345.556-1.345 1.569v10.235c0 1.013.614 1.569 1.345 1.569.365 0 .68-.108 1.037-.324l8.509-4.997c.49-.29.796-.631.904-1.038v4.79c0 1.013.615 1.569 1.345 1.569z" fill="currentColor" fill-rule="nonzero"/>
+          </svg>
+        </button>
+        <button class="tbtn main" @click="togglePlay">
+          <svg v-if="!playing" width="22" height="22" viewBox="0 0 22 22" fill="none">
+            <path d="M7 4l12 7-12 7V4z" fill="currentColor"/>
+          </svg>
+          <svg v-else width="22" height="22" viewBox="0 0 22 22" fill="none">
+            <rect x="5" y="4" width="4" height="14" rx="1" fill="currentColor"/>
+            <rect x="13" y="4" width="4" height="14" rx="1" fill="currentColor"/>
+          </svg>
+        </button>
+        <button class="tbtn" @click="next">
+          <svg width="18" height="18" viewBox="0 0 32 28" xmlns="http://www.w3.org/2000/svg">
+            <path d="M18.14 20.68c.365 0 .672-.107 1.038-.323l8.508-4.997c.623-.365.938-.814.938-1.37 0-.564-.307-.988-.938-1.361l-8.508-4.997c-.366-.216-.68-.324-1.046-.324-.73 0-1.337.556-1.337 1.569v4.773c-.108-.399-.406-.73-.904-1.021L7.382 7.632c-.357-.216-.672-.324-1.037-.324-.73 0-1.345.556-1.345 1.569v10.235c0 1.013.614 1.569 1.345 1.569.365 0 .68-.108 1.037-.324l8.509-4.997c.49-.29.796-.631.904-1.038v4.79c0 1.013.615 1.569 1.345 1.569z" fill="currentColor" fill-rule="nonzero"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- seekable progress bar, always flush at bottom -->
+      <div class="progress-bar" @click="seek">
+        <div class="progress-fill" ref="progressFill" />
+      </div>
     </div>
 
     <!-- ACTION BAR -->
@@ -199,7 +295,7 @@ async function loadThumbnails() {
       </div>
     </div>
 
-    <!-- BOTTOM ROW: queue + hints -->
+    <!-- BOTTOM ROW -->
     <div class="bottom-row">
       <div class="queue-card">
         <div class="queue-header">
@@ -214,14 +310,14 @@ async function loadThumbnails() {
             :class="{ now: i === currentIndex }"
             @click="currentIndex = i"
           >
-            <div class="q-thumb">
-              <svg v-if="i === currentIndex" width="10" height="10" viewBox="0 0 10 10" fill="none">
+            <div class="q-thumb" :ref="el => el && queueThumb(clip, el)">
+              <svg v-if="i === currentIndex && !thumbnails[clip]" width="10" height="10" viewBox="0 0 10 10" fill="none">
                 <path d="M2 1l7 4-7 4V1z" fill="rgba(255,255,255,0.6)" />
               </svg>
-            <img v-if="thumbnails[clip]" :src="`file:///${thumbnails[clip].replace(/\\/g, '/')}`"  />
+              <img v-if="thumbnails[clip]" :src="`file:///${thumbnails[clip].replace(/\\/g, '/')}`" />
             </div>
             <div class="q-info">
-              <div class="q-name">{{ clip.split('\\').pop().replace('.mp4', '') }}</div>
+              <div class="q-name">{{ clip.split('\\').pop().replace(/\.mp4$/i, '') }}</div>
             </div>
           </div>
         </div>
@@ -229,10 +325,10 @@ async function loadThumbnails() {
 
       <div class="hint-area">
         <span class="hint"><span class="kbd">←</span><span class="kbd">→</span> navigate</span>
+        <span class="hint"><span class="kbd">Space</span> play/pause</span>
         <span class="hint"><span class="kbd">↵</span> rename & next</span>
         <span class="hint"><span class="kbd">Del</span> delete</span>
       </div>
-
     </div>
   </div>
 </template>
@@ -240,34 +336,20 @@ async function loadThumbnails() {
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&display=swap');
 
-:root {
-  --footer-text: rgb(191, 191, 191);
-}
+:root { --footer-text: rgb(191, 191, 191); }
 
-::-webkit-scrollbar {
-    display: none;
-}
-* { 
-  box-sizing: border-box; 
-  margin: 0; 
-  padding: 0; 
-  font-family: 'Geist', sans-serif; 
-  outline: none;
-}
+::-webkit-scrollbar { display: none; }
 
-html, body { 
-  background: #000; 
-  color: #fff; 
-  height: 100%; 
-}
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Geist', sans-serif; outline: none; }
 
-/* EMPTY STATE */
+html, body { background: #000; color: #fff; height: 100%; }
+
+/* ── EMPTY STATE ── */
 .empty-state {
   height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #000;
 }
 .empty-inner { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .empty-logo { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; }
@@ -281,13 +363,12 @@ html, body {
   border-radius: 8px;
   color: #fff;
   font-size: 13px;
-  font-family: 'Geist', sans-serif;
   cursor: pointer;
   transition: background 0.15s;
 }
 .pick-btn:hover { background: rgba(255,255,255,0.12); }
 
-/* PLAYER */
+/* ── PLAYER ── */
 .root {
   background: #000;
   display: flex;
@@ -296,53 +377,60 @@ html, body {
   overflow-y: auto;
 }
 
-.video-wrap {
-  position: relative;
-  width: 100%;
-  background: #000;
-}
+/* ── VIDEO WRAP ── */
+.video-wrap { position: relative; width: 100%; background: #000; }
+.video-el { width: 100%; height: auto; display: block; }
 
-.video-el {
-  width: 100%;
-  height: auto;
-  display: block;
-}
-
+/* ── OVERLAY ──
+   z-index 5: above video, below transport (10) and progress bar (20)
+   bottom padding 56px: clears the transport row height              */
 .overlay {
   position: absolute;
   bottom: 0; left: 0; right: 0;
-  padding: 60px 28px 16px;
-  background: linear-gradient(to top, rgba(0,0,0,0.88) 0%, transparent 100%);
+  padding: 80px 28px 56px;
+  background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 100%);
   pointer-events: none;
+  z-index: 5;
 }
-.overlay-title { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 3px; }
-.overlay-sub {
-  font-size: 11px; font-weight: 300;
-  color: rgba(112, 112, 112, 0.4);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  margin-bottom: 12px;
+.overlay-title {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.progress-track {
-  height: 3px;
-  background: rgba(255,255,255,0.18);
-  border-radius: 2px;
+.overlay-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
-.progress-fill {
-  height: 100%;
-  width: 0%;
-  background: #fff;
-  border-radius: 2px;
-  transition: width 0.4s linear;
+.counter {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: 0.02em;
 }
+.counter-sep { color: rgba(255,255,255,0.25); margin: 0 3px; }
+.duration {
+  font-size: 11px;
+  font-weight: 300;
+  color: rgba(255,255,255,0.4);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── TRANSPORT ── */
 .transport-row {
+  position: absolute;
+  bottom: 12px;
+  left: 28px;
   display: flex;
   align-items: center;
   gap: 18px;
-  margin-top: 10px;
+  z-index: 10;
   pointer-events: all;
 }
-
 .tbtn {
   background: none;
   border: none;
@@ -351,14 +439,34 @@ html, body {
   padding: 0;
   display: flex;
   align-items: center;
-
+  transition: color 0.12s;
 }
-.tbtn.main { color: #fff;  cursor: pointer; }
-
 .tbtn:hover { color: #fff; }
+.tbtn.main { color: #fff; }
+.tbtn.main:hover { color: rgba(255,255,255,0.6); }
 
-.tbtn.main:hover { color: rgba(240, 240, 240, 0.7); }
-/* ACTION BAR */
+/* ── PROGRESS BAR ── */
+.progress-bar {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 4px;
+  background: rgba(255,255,255,0.15);
+  cursor: pointer;
+  z-index: 20;
+  pointer-events: all;
+  transition: height 0.15s;
+}
+.progress-bar:hover { height: 6px; }
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: #fff;
+  border-radius: 2px;
+  pointer-events: none;
+  transition: width 0.4s linear;
+}
+
+/* ── ACTION BAR ── */
 .action-bar {
   background: #111;
   border-top: 0.5px solid rgba(255,255,255,0.07);
@@ -375,18 +483,15 @@ html, body {
   border-radius: 7px;
   padding: 8px 14px;
   font-size: 13px;
-  font-family: 'Geist', sans-serif;
   color: #fff;
   outline: none;
   transition: border-color 0.15s;
 }
 .rename-field::placeholder { color: rgba(255,255,255,0.2); }
 .rename-field:focus { border-color: rgba(255,255,255,0.3); }
-
 .abar-btn {
   padding: 8px 16px;
   font-size: 12px;
-  font-family: 'Geist', sans-serif;
   font-weight: 500;
   border-radius: 7px;
   border: 0.5px solid rgba(255,255,255,0.12);
@@ -399,15 +504,12 @@ html, body {
 .abar-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
 .abar-btn.del { color: rgba(255,80,60,0.7); border-color: rgba(255,80,60,0.18); }
 .abar-btn.del:hover { background: rgba(255,80,60,0.1); color: rgb(255,80,60); }
-
 .divider { width: 0.5px; height: 20px; background: rgba(255,255,255,0.08); flex-shrink: 0; }
 
 input::-webkit-outer-spin-button,
-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-.skip-row {  display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: 4px; }
+input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+.skip-row { display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: 4px; }
 .skip-label { font-size: 11px; color: rgba(255,255,255,0.3); white-space: nowrap; }
 .skip-num {
   width: 54px;
@@ -416,7 +518,6 @@ input::-webkit-inner-spin-button {
   border-radius: 5px;
   padding: 4px 6px;
   font-size: 12px;
-  font-family: 'Geist', sans-serif;
   color: #fff;
   outline: none;
   text-align: center;
@@ -441,7 +542,7 @@ input::-webkit-inner-spin-button {
 }
 .toggle-wrap.off .toggle-knob { right: auto; left: 2px; }
 
-/* BOTTOM ROW */
+/* ── BOTTOM ROW ── */
 .bottom-row {
   display: flex;
   align-items: flex-start;
@@ -450,7 +551,6 @@ input::-webkit-inner-spin-button {
   background: #0a0a0a;
   flex: 1;
 }
-
 .queue-card {
   width: 240px;
   background: #161616;
@@ -471,9 +571,8 @@ input::-webkit-inner-spin-button {
   justify-content: space-between;
 }
 .queue-list { max-height: 200px; overflow-y: auto; }
-.queue-list::-webkit-scrollbar { width: 3px; }
+.queue-list::-webkit-scrollbar { width: 3px; display: block; }
 .queue-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
-
 .queue-item {
   display: flex;
   align-items: center;
@@ -486,8 +585,8 @@ input::-webkit-inner-spin-button {
 .queue-item:hover { background: rgba(255,255,255,0.03); }
 .queue-item.now { background: rgba(255,255,255,0.05); }
 .queue-item:last-child { border-bottom: none; }
-
 .q-thumb {
+  position: relative;
   width: 44px; height: 27px;
   background: rgba(255,255,255,0.06);
   border-radius: 4px;
@@ -495,6 +594,14 @@ input::-webkit-inner-spin-button {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+}
+.q-thumb img {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  border-radius: 4px;
 }
 .q-info { flex: 1; min-width: 0; }
 .q-name {
@@ -506,7 +613,6 @@ input::-webkit-inner-spin-button {
   text-overflow: ellipsis;
 }
 .queue-item.now .q-name { color: #fff; }
-
 .hint-area {
   flex: 1;
   display: flex;
