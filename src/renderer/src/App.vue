@@ -9,7 +9,7 @@ const skipEnabled = ref(false)
 const skipSeconds = ref(10)
 const videoMounted = ref(true)
 const editedName = ref('')
-
+const thumbnails = ref({})
 const currentClip = computed(() => clips.value[currentIndex.value])
 
 const playing = ref(true)
@@ -26,7 +26,10 @@ function togglePlay() {
 }
 
 // reset playing state when clip changes
-watch(currentIndex, () => {
+watch(currentIndex, (i) => {
+  playing.value = true
+  editedName.value = currentClip.value.split('\\').pop().replace('.mp4', '')
+  if (folder.value) localStorage.setItem(`clipIndex:${folder.value}`, i)
   playing.value = true
   editedName.value = currentClip.value.split('\\').pop().replace('.mp4', '')
 })
@@ -36,10 +39,15 @@ async function pickFolder() {
   folder.value = await window.electron.ipcRenderer.invoke('select-folder')
   if (folder.value) {
     clips.value = await window.electron.ipcRenderer.invoke('get-clips', folder.value)
+    // Restore saved index
+    const saved = localStorage.getItem(`clipIndex:${folder.value}`)
+    currentIndex.value = saved ? Math.min(parseInt(saved), clips.value.length - 1) : 0
     if (clips.value.length > 0) {
       editedName.value = clips.value[0].split('\\').pop().replace('.mp4', '')
     }
+    
   }
+
 }
 
 function next() {
@@ -50,15 +58,13 @@ function prev() {
   if (currentIndex.value > 0) currentIndex.value--
 }
 
-watch(currentIndex, () => {
-  editedName.value = currentClip.value.split('\\').pop().replace('.mp4', '')
-})
 
 function handleVideoLoaded() {
   if (!skipEnabled.value) return
   const duration = videoEl.value.duration
   const target = duration - skipSeconds.value
   if (target > 0) videoEl.value.currentTime = target
+  
 }
 
 function updateProgress() {
@@ -97,6 +103,18 @@ function handleKeydown(e) {
 
 onMounted(() => window.addEventListener('keydown', handleKeydown))
 onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
+
+
+
+async function loadThumbnails() {
+  for (const clip of clips.value) {
+    const path = await window.electron.ipcRenderer.invoke('get-thumbnail', clip)
+    thumbnails.value[clip] = path
+  }
+}
+
+
+
 </script>
 
 <template>
@@ -121,6 +139,8 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
         :src="`file:///${currentClip.replaceAll('\\', '/')}`"
         autoplay
         @loadedmetadata="handleVideoLoaded"
+        @canplay="() => console.log('canplay', videoEl.clientWidth, videoEl.clientHeight)"
+        @error="(e) => console.log('error', e)"
         @timeupdate="updateProgress"
         class="video-el"
       />
@@ -171,7 +191,7 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
       <div class="skip-row">
         <span class="skip-label">Last</span>
         <input class="skip-num" type="number" v-model="skipSeconds" min="1" />
-        <span class="skip-label">s</span>
+        <span class="skip-label">seconds</span>
         <div class="toggle-wrap" :class="{ off: !skipEnabled }" @click="skipEnabled = !skipEnabled">
           <div class="toggle-knob" />
         </div>
@@ -180,7 +200,6 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
 
     <!-- BOTTOM ROW: queue + hints -->
     <div class="bottom-row">
-
       <div class="queue-card">
         <div class="queue-header">
           <span>Queue</span>
@@ -198,6 +217,7 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
               <svg v-if="i === currentIndex" width="10" height="10" viewBox="0 0 10 10" fill="none">
                 <path d="M2 1l7 4-7 4V1z" fill="rgba(255,255,255,0.6)" />
               </svg>
+            <img v-if="thumbnails[clip]" :src="`file:///${thumbnails[clip].replace(/\\/g, '/')}`"  />
             </div>
             <div class="q-info">
               <div class="q-name">{{ clip.split('\\').pop().replace('.mp4', '') }}</div>
@@ -219,8 +239,23 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&display=swap');
 
-* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Geist', sans-serif; }
-html, body { background: #000; color: #fff; height: 100%; }
+:root {
+  --footer-text: rgb(191, 191, 191);
+}
+
+* { 
+  box-sizing: border-box; 
+  margin: 0; 
+  padding: 0; 
+  font-family: 'Geist', sans-serif; 
+  outline: none;
+}
+
+html, body { 
+  background: #000; 
+  color: #fff; 
+  height: 100%; 
+}
 
 /* EMPTY STATE */
 .empty-state {
@@ -251,24 +286,21 @@ html, body { background: #000; color: #fff; height: 100%; }
 /* PLAYER */
 .root {
   background: #000;
-  height: 100vh;
   display: flex;
   flex-direction: column;
+  min-height: 100vh;
+  overflow-y: auto;
 }
 
 .video-wrap {
   position: relative;
   width: 100%;
-  flex: 1;
   background: #000;
-  overflow: hidden;
-  min-height: 0;
 }
 
 .video-el {
   width: 100%;
-  height: 100%;
-  object-fit: contain;
+  height: auto;
   display: block;
 }
 
@@ -282,7 +314,7 @@ html, body { background: #000; color: #fff; height: 100%; }
 .overlay-title { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 3px; }
 .overlay-sub {
   font-size: 11px; font-weight: 300;
-  color: rgba(255,255,255,0.4);
+  color: rgba(112, 112, 112, 0.4);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   margin-bottom: 12px;
@@ -363,6 +395,11 @@ html, body { background: #000; color: #fff; height: 100%; }
 
 .divider { width: 0.5px; height: 20px; background: rgba(255,255,255,0.08); flex-shrink: 0; }
 
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
 .skip-row {  display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: 4px; }
 .skip-label { font-size: 11px; color: rgba(255,255,255,0.3); white-space: nowrap; }
 .skip-num {
@@ -471,7 +508,7 @@ html, body { background: #000; color: #fff; height: 100%; }
   gap: 20px;
   padding-top: 4px;
 }
-.hint { font-size: 11px; color: rgba(255,255,255,0.18); font-weight: 300; display: flex; align-items: center; gap: 5px; }
+.hint { font-size: 11px; color: var(--footer-text); font-weight: 300; display: flex; align-items: center; gap: 5px; }
 .kbd {
   background: rgba(255,255,255,0.07);
   border: 0.5px solid rgba(255,255,255,0.1);
