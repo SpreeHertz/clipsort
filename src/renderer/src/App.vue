@@ -165,9 +165,10 @@ async function loadThumbnails() {
     </svg>
   </button>
   <button class="tbtn" @click="next">
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-      <path d="M4 4l10 5-10 5V4z" fill="currentColor"/>
-    </svg>
+   <svg width="18" height="18" viewBox="0 0 32 28" xmlns="http://www.w3.org/2000/svg">
+    <path d="M18.14 20.68c.365 0 .672-.107 1.038-.323l8.508-4.997c.623-.365.938-.814.938-1.37 0-.564-.307-.988-.938-1.361l-8.508-4.997c-.366-.216-.68-.324-1.046-.324-.73 0-1.337.556-1.337 1.569v4.773c-.108-.399-.406-.73-.904-1.021L7.382 7.632c-.357-.216-.672-.324-1.037-.324-.73 0-1.345.556-1.345 1.569v10.235c0 1.013.614 1.569 1.345 1.569.365 0 .68-.108 1.037-.324l8.509-4.997c.49-.29.796-.631.904-1.038v4.79c0 1.013.615 1.569 1.345 1.569z" fill="currentColor" fill-rule="nonzero"/>
+  </svg>
+
   </button>
   </div>
         </div>
@@ -243,6 +244,9 @@ async function loadThumbnails() {
   --footer-text: rgb(191, 191, 191);
 }
 
+::-webkit-scrollbar {
+    display: none;
+}
 * { 
   box-sizing: border-box; 
   margin: 0; 
@@ -347,10 +351,13 @@ html, body {
   padding: 0;
   display: flex;
   align-items: center;
-  transition: color 0.12s;
+
 }
+.tbtn.main { color: #fff;  cursor: pointer; }
+
 .tbtn:hover { color: #fff; }
-.tbtn.main { color: #fff; }
+
+.tbtn.main:hover { color: rgba(240, 240, 240, 0.7); }
 /* ACTION BAR */
 .action-bar {
   background: #111;
