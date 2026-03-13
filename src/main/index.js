@@ -153,13 +153,18 @@ function readState() {
   }
 }
 
-ipcMain.handle('load-state', () => readState())
+ipcMain.handle('load-state', () =>{
+  const data = readState()
+  console.log('load-state returning', data)
+  return data
+})
 
 ipcMain.handle('save-state', (_, data) => {
+  console.log('save-state received', data)
   fs.writeFileSync(statePath, JSON.stringify(data))
   
 })
-
+console.log('statePath:', statePath)
 ipcMain.handle('get-scrub-thumbnails', async (_, videoPath, duration) => {
   const count = 10
   const paths = []

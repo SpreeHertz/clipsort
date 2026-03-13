@@ -116,6 +116,7 @@ watch(currentIndex, (i) => {
 
 async function saveState() {
   if (!folder.value) return
+  console.log('saving state', { folder: folder.value, skipEnabled: skipEnabled.value, skipSeconds: skipSeconds.value })
   await window.electron.ipcRenderer.invoke('save-state', {
     folder: folder.value,
     index: currentIndex.value,
@@ -128,7 +129,11 @@ async function loadState() {
   return await window.electron.ipcRenderer.invoke('load-state')
 }
 
-watch([skipEnabled, skipSeconds], saveState)
+watch([skipEnabled, skipSeconds], (newVals) => {
+  console.log('skip prefs changed', newVals)
+  saveState()
+})
+
 // Folder / clips
 
 async function initClips(folderPath, savedIndex = 0) {
@@ -252,6 +257,9 @@ onMounted(async () => {
   if (state?.folder) {
     folder.value = state.folder
     await initClips(state.folder, state.index ?? 0)
+    // set these AFTER initClips so the watch doesn't overwrite them
+    skipEnabled.value = state.skipEnabled ?? false
+    skipSeconds.value = state.skipSeconds ?? 10
   }
 })
 
