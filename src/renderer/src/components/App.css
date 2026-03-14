@@ -33,7 +33,7 @@ html, body { background: #000; color: #fff; height: 100%; }
 .pick-btn:hover { background: rgba(255,255,255,0.12); }
 
 .alert-card {
-  position: absolute;
+  position: fixed;
   top: 16px;
   right: 16px;
   z-index: 20;

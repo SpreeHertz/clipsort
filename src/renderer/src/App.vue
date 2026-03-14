@@ -28,6 +28,9 @@ const frozenFrame = ref(null)
 function showAlert(message) {
   alertMessage.value = message
   console.log("alert called", message)
+  console.trace('showAlert called with:', message)
+  alertMessage.value = message
+  setTimeout(() => alertMessage.value = '', 3500)
   setTimeout(() => {
     alertMessage.value = ''
   }, 3500)
@@ -151,7 +154,7 @@ async function saveState() {
     index: currentIndex.value,
     skipEnabled: skipEnabled.value,
     skipSeconds: skipSeconds.value
-  })
+  }, 400)
 }
 
 async function loadState() {
@@ -184,6 +187,13 @@ async function pickFolder() {
 //  Rename / Delete
 
 async function renameClip() {
+  const invalid = /[\\/:*?"<>|]/
+  if (invalid.test(editedName.value)) {
+  alert('Files cannot be renamed with this special character. Please remove it.')
+  return
+}
+  videoEl.value.src = '' 
+  const inputEl = document.querySelector('.rename-field')
   videoMounted.value = false
   await nextTick()
   await new Promise(r => setTimeout(r, 300))
@@ -197,6 +207,7 @@ async function renameClip() {
   }
   showAlert(`"${oldName}" renamed to "${editedName.value}" successfully.`)
   clips.value[currentIndex.value] = result.path
+  inputEl?.focus()
   videoMounted.value = true
   next()
 }
