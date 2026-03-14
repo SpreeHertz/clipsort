@@ -20,6 +20,17 @@ const hoverTime = ref(null)
 const hoverX = ref(0)
 const hoverThumb = ref(null)
 const overlayHidden = ref(false)
+const alertMessage = ref('')
+
+// cards for temporary messages
+function showAlert(message) {
+  alertMessage.value = message
+  console.log("alert called", message)
+  setTimeout(() => {
+    alertMessage.value = ''
+  }, 3500)
+}
+
 // Playback
 
 function togglePlay() {
@@ -108,6 +119,9 @@ function seek(e) {
 
 function next() {
   if (currentIndex.value < clips.value.length - 1) currentIndex.value++
+  if (currentIndex.value === clips.value.length) {
+    showAlert("Reached end of queue.")
+  }
 }
 
 function prev() {
@@ -175,7 +189,7 @@ async function renameClip() {
   const result = await window.electron.ipcRenderer.invoke('rename-clip', currentClip.value, editedName.value)
   
   if (!result.success) {
-    alert('Could not rename — file still in use. Try again.')
+    alert('Could not rename. Try again. (Maybe try skipping to the last second then delete?)')
     videoMounted.value = true
     return
   }
@@ -211,6 +225,7 @@ async function deleteClip() {
   }
 
   videoMounted.value = true
+  showAlert(`"${currentClip.value?.split('\\').pop().replace(/\.mp4$/i, '')}" deleted successfully.`)
   await saveState()
 }
 
@@ -304,6 +319,7 @@ onUnmounted(() => {
   <div v-else class="root">
 
     <div class="video-wrap">
+      <div v-if="alertMessage" class="alert-card">{{ alertMessage }}</div>
   <video
     v-if="videoMounted"
     ref="videoEl"
@@ -480,6 +496,19 @@ html, body { background: #000; color: #fff; height: 100%; }
 }
 .pick-btn:hover { background: rgba(255,255,255,0.12); }
 
+.alert-card {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 20;
+  background: rgba(132, 132, 132, 0.548);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 16px;
+  backdrop-filter: blur(30px);
+}
+
 /* ── PLAYER ── */
 .root {
   background: #000;
@@ -594,7 +623,7 @@ input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
 .skip-row { display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: 4px; }
-.skip-label { font-size: 11px; color: rgba(255,255,255,0.3); white-space: nowrap; }
+.skip-label { font-size: 11px; color: rgba(255, 255, 255, 0.427); white-space: nowrap; }
 .skip-num {
   width: 54px;
   background: rgba(255,255,255,0.06);
@@ -612,7 +641,7 @@ input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
   border-radius: 9px;
   position: relative;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.1s;
   flex-shrink: 0;
 }
 .toggle-wrap.off { background: rgba(255,255,255,0.15); }
@@ -753,7 +782,7 @@ input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
   border-radius: 9px;
   transition: height 0.15s;
 }
-.progress-bar:hover { height: 6px; }
+.progress-bar:hover { height: 8px; }
 
 .progress-fill {
   height: 100%;
@@ -761,7 +790,7 @@ input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
   background: #fff;
   border-radius: 9px;
   pointer-events: none;
-  transition: width 0.4s linear;
+
 }
 
 .scrub-popup {
