@@ -184,22 +184,23 @@ async function pickFolder() {
 async function renameClip() {
   videoMounted.value = false
   await nextTick()
-  await new Promise(r => setTimeout(r, 300)) // increased from 150
-  
+  await new Promise(r => setTimeout(r, 300))
+  const oldName = currentClip.value?.split('\\').pop().replace(/\.mp4$/i, '')
   const result = await window.electron.ipcRenderer.invoke('rename-clip', currentClip.value, editedName.value)
   
   if (!result.success) {
-    alert('Could not rename. Try again. (Maybe try skipping to the last second then delete?)')
+    alert('Could not rename. Try again. (Maybe try skipping to the last second then rename?)')
     videoMounted.value = true
     return
   }
-  
+  showAlert(`"${oldName}" renamed to "${editedName.value}" successfully.`)
   clips.value[currentIndex.value] = result.path
   videoMounted.value = true
   next()
 }
 
 async function deleteClip() {
+  const deletedName = currentClip.value?.split('\\').pop().replace(/\.mp4$/i, '')
   videoMounted.value = false
   await nextTick()
   await new Promise(r => setTimeout(r, 300))
@@ -207,7 +208,7 @@ async function deleteClip() {
   const result = await window.electron.ipcRenderer.invoke('delete-clip', currentClip.value)
 
   if (!result.success) {
-    alert('Could not delete — file still in use. Try again.')
+    alert('Could not delete — file still in use. Try again (Maybe try skipping to the last second then delete?)')
     videoMounted.value = true
     return
   }
@@ -225,7 +226,7 @@ async function deleteClip() {
   }
 
   videoMounted.value = true
-  showAlert(`"${currentClip.value?.split('\\').pop().replace(/\.mp4$/i, '')}" deleted successfully.`)
+  showAlert(`"${deletedName}" deleted successfully.`)
   await saveState()
 }
 
@@ -266,7 +267,7 @@ function queueThumb(clip, el) {
 // Keyboard 
 
 function handleKeydown(e) {
-  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'F11'].includes(e.code)) {
     if (document.activeElement?.classList.contains('rename-field')) return
     e.preventDefault()
   }
@@ -275,6 +276,7 @@ function handleKeydown(e) {
   if (e.key === 'ArrowLeft') prev()
   if (e.key === 'Enter') renameClip()
   if (e.key === 'Delete') deleteClip()
+  if (e.key == 'F11') toggleFullscreen()
 }
 
 //  Lifecycle
