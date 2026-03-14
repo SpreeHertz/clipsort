@@ -21,6 +21,7 @@ const hoverX = ref(0)
 const hoverThumb = ref(null)
 const overlayHidden = ref(false)
 const alertMessage = ref('')
+const frozenFrame = ref(null)
 
 // cards for temporary messages
 function showAlert(message) {
@@ -201,6 +202,11 @@ async function renameClip() {
 
 async function deleteClip() {
   const deletedName = currentClip.value?.split('\\').pop().replace(/\.mp4$/i, '')
+  const canvas = document.createElement('canvas')
+  canvas.width = videoEl.value.videoWidth
+  canvas.height = videoEl.value.videoHeight
+  canvas.getContext('2d').drawImage(videoEl.value, 0, 0)
+  frozenFrame.value = canvas.toDataURL()
   videoMounted.value = false
   await nextTick()
   await new Promise(r => setTimeout(r, 300))
@@ -228,6 +234,7 @@ async function deleteClip() {
   videoMounted.value = true
   showAlert(`"${deletedName}" deleted successfully.`)
   await saveState()
+   frozenFrame.value = null  // clear frame hold after deleting
 }
 
 //  Thumbnails
@@ -333,7 +340,11 @@ onUnmounted(() => {
     @timeupdate="updateProgress"
     class="video-el"
   />
-
+<img 
+  v-else-if="frozenFrame" 
+  :src="frozenFrame" 
+  class="frozen-frame"
+        />
   <!-- overlay: gradient + title + counter -->
   <div class="overlay" >
     <div class="overlay-title" v-show="!overlayHidden">{{ currentClip?.split('\\').pop().replace(/\.mp4$/i, '') }}</div>
@@ -521,9 +532,14 @@ html, body { background: #000; color: #fff; height: 100%; }
 }
 
 /* ── VIDEO WRAP ── */
-.video-wrap { position: relative; width: 100%; background: #000; }
+.video-wrap { position: relative; width: 100%; background: #000; aspect-ratio: 16/9; }
 .video-el { width: 100%; height: auto; display: block; }
-
+.video-el, .frozen-frame {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
 /* ── OVERLAY ──
    z-index 5: above video, below transport (10) and progress bar (20)
    bottom padding 56px: clears the transport row height              */
