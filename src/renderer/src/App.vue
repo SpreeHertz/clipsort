@@ -16,7 +16,7 @@ const playing = ref(true)
 const currentTime = ref('0:00')
 const totalDuration = ref('0:00')
 const currentClip = computed(() => clips.value[currentIndex.value])
-const scrubThumbs = ref([])  // [{ time, path }]
+const scrubThumbs = ref([]) // [{ time, path }]
 const hoverTime = ref(null)
 const hoverX = ref(0)
 const hoverThumb = ref(null)
@@ -27,10 +27,10 @@ const frozenFrame = ref(null)
 // cards for temporary messages
 function showAlert(message) {
   alertMessage.value = message
-  console.log("alert called", message)
+  console.log('alert called', message)
   console.trace('showAlert called with:', message)
   alertMessage.value = message
-  setTimeout(() => alertMessage.value = '', 3500)
+  setTimeout(() => (alertMessage.value = ''), 3500)
   setTimeout(() => {
     alertMessage.value = ''
   }, 3500)
@@ -52,7 +52,9 @@ function togglePlay() {
 function formatTime(s) {
   if (!s || isNaN(s)) return '0:00'
   const m = Math.floor(s / 60)
-  const sec = Math.floor(s % 60).toString().padStart(2, '0')
+  const sec = Math.floor(s % 60)
+    .toString()
+    .padStart(2, '0')
   return `${m}:${sec}`
 }
 
@@ -62,7 +64,6 @@ function updateProgress() {
   progressFill.value.style.width = pct + '%'
   currentTime.value = formatTime(videoEl.value.currentTime)
 }
-
 
 // call this after video loads
 async function loadScrubThumbs() {
@@ -102,9 +103,10 @@ function onProgressHover(e) {
   hoverX.value = e.clientX - rect.left
 
   // find closest scrub thumbnail
-  const closest = scrubThumbs.value.reduce((prev, curr) =>
-    Math.abs(curr.time - time) < Math.abs(prev.time - time) ? curr : prev
-  , scrubThumbs.value[0])
+  const closest = scrubThumbs.value.reduce(
+    (prev, curr) => (Math.abs(curr.time - time) < Math.abs(prev.time - time) ? curr : prev),
+    scrubThumbs.value[0]
+  )
   hoverThumb.value = closest?.path ?? null
 }
 
@@ -125,7 +127,7 @@ function seek(e) {
 function next() {
   if (currentIndex.value < clips.value.length - 1) currentIndex.value++
   if (currentIndex.value === clips.value.length) {
-    showAlert("Reached end of queue.")
+    showAlert('Reached end of queue.')
   }
 }
 
@@ -133,10 +135,13 @@ function prev() {
   if (currentIndex.value > 0) currentIndex.value--
 }
 
-watch(currentIndex, (i) => {
+watch(currentIndex, () => {
   playing.value = true
-  editedName.value = currentClip.value.split('\\').pop().replace(/\.mp4$/i, '')
-  scrubThumbs.value = []  // ← clear old thumbs
+  editedName.value = currentClip.value
+    .split('\\')
+    .pop()
+    .replace(/\.mp4$/i, '')
+  scrubThumbs.value = [] // ← clear old thumbs
   saveState()
 })
 
@@ -148,13 +153,21 @@ function toggleOverlay() {
 
 async function saveState() {
   if (!folder.value) return
-  console.log('saving state', { folder: folder.value, skipEnabled: skipEnabled.value, skipSeconds: skipSeconds.value })
-  await window.electron.ipcRenderer.invoke('save-state', {
+  console.log('saving state', {
     folder: folder.value,
-    index: currentIndex.value,
     skipEnabled: skipEnabled.value,
     skipSeconds: skipSeconds.value
-  }, 400)
+  })
+  await window.electron.ipcRenderer.invoke(
+    'save-state',
+    {
+      folder: folder.value,
+      index: currentIndex.value,
+      skipEnabled: skipEnabled.value,
+      skipSeconds: skipSeconds.value
+    },
+    400
+  )
 }
 
 async function loadState() {
@@ -172,7 +185,10 @@ async function initClips(folderPath, savedIndex = 0) {
   clips.value = await window.electron.ipcRenderer.invoke('get-clips', folderPath)
   if (!clips.value.length) return false
   currentIndex.value = Math.min(savedIndex, clips.value.length - 1)
-  editedName.value = clips.value[currentIndex.value].split('\\').pop().replace(/\.mp4$/i, '')
+  editedName.value = clips.value[currentIndex.value]
+    .split('\\')
+    .pop()
+    .replace(/\.mp4$/i, '')
   return true
 }
 
@@ -189,17 +205,24 @@ async function pickFolder() {
 async function renameClip() {
   const invalid = /[\\/:*?"<>|]/
   if (invalid.test(editedName.value)) {
-  alert('Files cannot be renamed with this special character. Please remove it.')
-  return
-}
-  videoEl.value.src = '' 
+    alert('Files cannot be renamed with this special character. Please remove it.')
+    return
+  }
+  videoEl.value.src = ''
   const inputEl = document.querySelector('.rename-field')
   videoMounted.value = false
   await nextTick()
-  await new Promise(r => setTimeout(r, 300))
-  const oldName = currentClip.value?.split('\\').pop().replace(/\.mp4$/i, '')
-  const result = await window.electron.ipcRenderer.invoke('rename-clip', currentClip.value, editedName.value)
-  
+  await new Promise((r) => setTimeout(r, 300))
+  const oldName = currentClip.value
+    ?.split('\\')
+    .pop()
+    .replace(/\.mp4$/i, '')
+  const result = await window.electron.ipcRenderer.invoke(
+    'rename-clip',
+    currentClip.value,
+    editedName.value
+  )
+
   if (!result.success) {
     alert('Could not rename. Try again. (Maybe try skipping to the last second then rename?)')
     videoMounted.value = true
@@ -213,7 +236,10 @@ async function renameClip() {
 }
 
 async function deleteClip() {
-  const deletedName = currentClip.value?.split('\\').pop().replace(/\.mp4$/i, '')
+  const deletedName = currentClip.value
+    ?.split('\\')
+    .pop()
+    .replace(/\.mp4$/i, '')
   const canvas = document.createElement('canvas')
   canvas.width = videoEl.value.videoWidth
   canvas.height = videoEl.value.videoHeight
@@ -221,12 +247,14 @@ async function deleteClip() {
   frozenFrame.value = canvas.toDataURL()
   videoMounted.value = false
   await nextTick()
-  await new Promise(r => setTimeout(r, 300))
+  await new Promise((r) => setTimeout(r, 300))
 
   const result = await window.electron.ipcRenderer.invoke('delete-clip', currentClip.value)
 
   if (!result.success) {
-    alert('Could not delete — file still in use. Try again (Maybe try skipping to the last second then delete?)')
+    alert(
+      'Could not delete — file still in use. Try again (Maybe try skipping to the last second then delete?)'
+    )
     videoMounted.value = true
     return
   }
@@ -246,7 +274,7 @@ async function deleteClip() {
   videoMounted.value = true
   showAlert(`"${deletedName}" deleted successfully.`)
   await saveState()
-   frozenFrame.value = null  // clear frame hold after deleting
+  frozenFrame.value = null // clear frame hold after deleting
 }
 
 //  Thumbnails
@@ -273,17 +301,20 @@ async function processThumbQueue() {
 
 function queueThumb(clip, el) {
   if (!el || thumbnails.value[clip] || thumbQueue.includes(clip)) return
-  const observer = new IntersectionObserver(([entry]) => {
-    if (entry.isIntersecting) {
-      thumbQueue.push(clip)
-      processThumbQueue()
-      observer.disconnect()
-    }
-  }, { threshold: 0.1 })
+  const observer = new IntersectionObserver(
+    ([entry]) => {
+      if (entry.isIntersecting) {
+        thumbQueue.push(clip)
+        processThumbQueue()
+        observer.disconnect()
+      }
+    },
+    { threshold: 0.1 }
+  )
   observer.observe(el)
 }
 
-// Keyboard 
+// Keyboard
 
 function handleKeydown(e) {
   if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'F11'].includes(e.code)) {
@@ -318,14 +349,19 @@ onUnmounted(() => {
 </script>
 
 <template>
-
   <!---fullscreen svg -->
-  <svg style="display:none">
-  <symbol id="cis-fullscreen" viewBox="0 0 512 512">
-    <polygon fill="currentColor" points="224 80 224 16 16 16 16 224 80 224 80 125.255 197.373 242.627 242.627 197.373 125.255 80 224 80"/>
-    <polygon fill="currentColor" points="432 288 432 386.745 310.627 265.373 265.373 310.627 386.745 432 288 432 288 496 496 496 496 288 432 288"/>
-  </symbol>
-</svg>
+  <svg style="display: none">
+    <symbol id="cis-fullscreen" viewBox="0 0 512 512">
+      <polygon
+        fill="currentColor"
+        points="224 80 224 16 16 16 16 224 80 224 80 125.255 197.373 242.627 242.627 197.373 125.255 80 224 80"
+      />
+      <polygon
+        fill="currentColor"
+        points="432 288 432 386.745 310.627 265.373 265.373 310.627 386.745 432 288 432 288 496 496 496 496 288 432 288"
+      />
+    </symbol>
+  </svg>
 
   <!-- EMPTY STATE -->
   <div v-if="!clips.length" class="empty-state">
@@ -338,97 +374,106 @@ onUnmounted(() => {
 
   <!-- PLAYER -->
   <div v-else class="root">
-
     <div class="video-wrap">
       <div v-if="alertMessage" class="alert-card">{{ alertMessage }}</div>
-  <video
-    v-if="videoMounted"
-    ref="videoEl"
-    :key="currentClip"
-    :src="`file:///${currentClip.replaceAll('\\', '/')}`"
-    autoplay
-    @loadedmetadata="handleVideoLoaded"
-    @error="(e) => console.log('video error', e)"
-    @timeupdate="updateProgress"
-    class="video-el"
-  />
-<img 
-  v-else-if="frozenFrame" 
-  :src="frozenFrame" 
-  class="frozen-frame"
-        />
-  <!-- overlay: gradient + title + counter -->
-  <div class="overlay" >
-    <div class="overlay-title" v-show="!overlayHidden">{{ currentClip?.split('\\').pop().replace(/\.mp4$/i, '') }}</div>
-    <div class="overlay-meta" v-show="!overlayHidden">
-      <span class="counter">{{ currentIndex + 1 }}<span class="counter-sep">/</span>{{ clips.length }}</span>
-    </div>
-  </div>
-
-  <!-- controls: progress bar + transport -->
-  <div class="controls-row">
-    <div class="progress-section">
-      <div class="progress-timestamps">
-        <span class="duration-label">{{ currentTime }}</span>
-        <span class="duration-label">{{ totalDuration }}</span>
+      <video
+        v-if="videoMounted"
+        ref="videoEl"
+        :key="currentClip"
+        :src="`file:///${currentClip.replaceAll('\\', '/')}`"
+        autoplay
+        class="video-el"
+        @loadedmetadata="handleVideoLoaded"
+        @error="(e) => console.log('video error', e)"
+        @timeupdate="updateProgress"
+      />
+      <img v-else-if="frozenFrame" :src="frozenFrame" class="frozen-frame" />
+      <!-- overlay: gradient + title + counter -->
+      <div class="overlay">
+        <div v-show="!overlayHidden" class="overlay-title">
+          {{
+            currentClip
+              ?.split('\\')
+              .pop()
+              .replace(/\.mp4$/i, '')
+          }}
+        </div>
+        <div v-show="!overlayHidden" class="overlay-meta">
+          <span class="counter"
+            >{{ currentIndex + 1 }}<span class="counter-sep">/</span>{{ clips.length }}</span
+          >
+        </div>
       </div>
-      <div
-        class="progress-bar"
-        @click="seek"
-        @mousemove="onProgressHover"
-        @mouseleave="onProgressLeave"
-      >
-        <div class="progress-fill" ref="progressFill" />
-        <div
-          v-if="hoverTime"
-          class="scrub-popup"
-          :style="{ left: hoverX + 'px' }"
-        >
-          <img
-            v-if="hoverThumb"
-            :src="`file:///${hoverThumb.replace(/\\/g, '/')}`"
-            class="scrub-thumb"
-          />
-          <span class="scrub-time">{{ hoverTime }}</span>
+
+      <!-- controls: progress bar + transport -->
+      <div class="controls-row">
+        <div class="progress-section">
+          <div class="progress-timestamps">
+            <span class="duration-label">{{ currentTime }}</span>
+            <span class="duration-label">{{ totalDuration }}</span>
+          </div>
+          <div
+            class="progress-bar"
+            @click="seek"
+            @mousemove="onProgressHover"
+            @mouseleave="onProgressLeave"
+          >
+            <div ref="progressFill" class="progress-fill" />
+            <div v-if="hoverTime" class="scrub-popup" :style="{ left: hoverX + 'px' }">
+              <img
+                v-if="hoverThumb"
+                :src="`file:///${hoverThumb.replace(/\\/g, '/')}`"
+                class="scrub-thumb"
+              />
+              <span class="scrub-time">{{ hoverTime }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="transport-row">
+          <button class="tbtn" @click="prev">
+            <svg width="18" height="18" viewBox="0 0 32 28" xmlns="http://www.w3.org/2000/svg">
+              <path
+                transform="scale(-1,1) translate(-32,0)"
+                d="M18.14 20.68c.365 0 .672-.107 1.038-.323l8.508-4.997c.623-.365.938-.814.938-1.37 0-.564-.307-.988-.938-1.361l-8.508-4.997c-.366-.216-.68-.324-1.046-.324-.73 0-1.337.556-1.337 1.569v4.773c-.108-.399-.406-.73-.904-1.021L7.382 7.632c-.357-.216-.672-.324-1.037-.324-.73 0-1.345.556-1.345 1.569v10.235c0 1.013.614 1.569 1.345 1.569.365 0 .68-.108 1.037-.324l8.509-4.997c.49-.29.796-.631.904-1.038v4.79c0 1.013.615 1.569 1.345 1.569z"
+                fill="currentColor"
+                fill-rule="nonzero"
+              />
+            </svg>
+          </button>
+          <button class="tbtn main" @click="togglePlay">
+            <svg v-if="!playing" width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <path d="M7 4l12 7-12 7V4z" fill="currentColor" />
+            </svg>
+            <svg v-else width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <rect x="5" y="4" width="4" height="14" rx="1" fill="currentColor" />
+              <rect x="13" y="4" width="4" height="14" rx="1" fill="currentColor" />
+            </svg>
+          </button>
+          <button class="tbtn" @click="next">
+            <svg width="18" height="18" viewBox="0 0 32 28" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M18.14 20.68c.365 0 .672-.107 1.038-.323l8.508-4.997c.623-.365.938-.814.938-1.37 0-.564-.307-.988-.938-1.361l-8.508-4.997c-.366-.216-.68-.324-1.046-.324-.73 0-1.337.556-1.337 1.569v4.773c-.108-.399-.406-.73-.904-1.021L7.382 7.632c-.357-.216-.672-.324-1.037-.324-.73 0-1.345.556-1.345 1.569v10.235c0 1.013.614 1.569 1.345 1.569.365 0 .68-.108 1.037-.324l8.509-4.997c.49-.29.796-.631.904-1.038v4.79c0 1.013.615 1.569 1.345 1.569z"
+                fill="currentColor"
+                fill-rule="nonzero"
+              />
+            </svg>
+          </button>
+          <button class="tbtn" @click="toggleFullscreen">
+            <svg width="14" height="14" viewBox="0 0 512 512">
+              <use href="#cis-fullscreen" />
+            </svg>
+          </button>
         </div>
       </div>
     </div>
-
-    <div class="transport-row">
-      <button class="tbtn" @click="prev">
-        <svg width="18" height="18" viewBox="0 0 32 28" xmlns="http://www.w3.org/2000/svg">
-          <path transform="scale(-1,1) translate(-32,0)" d="M18.14 20.68c.365 0 .672-.107 1.038-.323l8.508-4.997c.623-.365.938-.814.938-1.37 0-.564-.307-.988-.938-1.361l-8.508-4.997c-.366-.216-.68-.324-1.046-.324-.73 0-1.337.556-1.337 1.569v4.773c-.108-.399-.406-.73-.904-1.021L7.382 7.632c-.357-.216-.672-.324-1.037-.324-.73 0-1.345.556-1.345 1.569v10.235c0 1.013.614 1.569 1.345 1.569.365 0 .68-.108 1.037-.324l8.509-4.997c.49-.29.796-.631.904-1.038v4.79c0 1.013.615 1.569 1.345 1.569z" fill="currentColor" fill-rule="nonzero"/>
-        </svg>
-      </button>
-      <button class="tbtn main" @click="togglePlay">
-        <svg v-if="!playing" width="22" height="22" viewBox="0 0 22 22" fill="none">
-          <path d="M7 4l12 7-12 7V4z" fill="currentColor"/>
-        </svg>
-        <svg v-else width="22" height="22" viewBox="0 0 22 22" fill="none">
-          <rect x="5" y="4" width="4" height="14" rx="1" fill="currentColor"/>
-          <rect x="13" y="4" width="4" height="14" rx="1" fill="currentColor"/>
-        </svg>
-      </button>
-      <button class="tbtn" @click="next">
-        <svg width="18" height="18" viewBox="0 0 32 28" xmlns="http://www.w3.org/2000/svg">
-          <path d="M18.14 20.68c.365 0 .672-.107 1.038-.323l8.508-4.997c.623-.365.938-.814.938-1.37 0-.564-.307-.988-.938-1.361l-8.508-4.997c-.366-.216-.68-.324-1.046-.324-.73 0-1.337.556-1.337 1.569v4.773c-.108-.399-.406-.73-.904-1.021L7.382 7.632c-.357-.216-.672-.324-1.037-.324-.73 0-1.345.556-1.345 1.569v10.235c0 1.013.614 1.569 1.345 1.569.365 0 .68-.108 1.037-.324l8.509-4.997c.49-.29.796-.631.904-1.038v4.79c0 1.013.615 1.569 1.345 1.569z" fill="currentColor" fill-rule="nonzero"/>
-        </svg>
-      </button>
-      <button @click="toggleFullscreen" class="tbtn">
-  <svg width="14" height="14" viewBox="0 0 512 512">
-    <use href="#cis-fullscreen" />
-  </svg>
-</button>
-    </div>
-  </div>
-</div>
     <!-- ACTION BAR -->
     <div class="action-bar">
       <input
-        class="rename-field"
         v-model="editedName"
-        @keyup.enter="renameClip"
+        class="rename-field"
         placeholder="rename clip…"
+        @keyup.enter="renameClip"
       />
       <button class="abar-btn" @click="renameClip">Rename</button>
       <div class="divider" />
@@ -436,16 +481,18 @@ onUnmounted(() => {
       <div class="divider" />
       <div class="skip-row">
         <span class="skip-label">Skip to last</span>
-        <input class="skip-num" type="number" v-model="skipSeconds" min="1" />
+        <input v-model="skipSeconds" class="skip-num" type="number" min="1" />
         <span class="skip-label">seconds</span>
         <div class="toggle-wrap" :class="{ off: !skipEnabled }" @click="skipEnabled = !skipEnabled">
           <div class="toggle-knob" />
         </div>
       </div>
-      <button class="abar-btn" @click="toggleOverlay"> {{ overlayHidden ? 'Show overlay' : 'Hide overlay' }}</button>
+      <button class="abar-btn" @click="toggleOverlay">
+        {{ overlayHidden ? 'Show overlay' : 'Hide overlay' }}
+      </button>
       <button class="abar-btn" @click="pickFolder">Change Folder</button>
-      
-<div class="divider" />
+
+      <div class="divider" />
     </div>
 
     <!-- BOTTOM ROW -->
@@ -463,14 +510,30 @@ onUnmounted(() => {
             :class="{ now: i === currentIndex }"
             @click="currentIndex = i"
           >
-            <div class="q-thumb" :ref="el => el && queueThumb(clip, el)">
-              <svg v-if="i === currentIndex && !thumbnails[clip]" width="10" height="10" viewBox="0 0 10 10" fill="none">
+            <div :ref="(el) => el && queueThumb(clip, el)" class="q-thumb">
+              <svg
+                v-if="i === currentIndex && !thumbnails[clip]"
+                width="10"
+                height="10"
+                viewBox="0 0 10 10"
+                fill="none"
+              >
                 <path d="M2 1l7 4-7 4V1z" fill="rgba(255,255,255,0.6)" />
               </svg>
-              <img v-if="thumbnails[clip]" :src="`file:///${thumbnails[clip].replace(/\\/g, '/')}`" />
+              <img
+                v-if="thumbnails[clip]"
+                :src="`file:///${thumbnails[clip].replace(/\\/g, '/')}`"
+              />
             </div>
             <div class="q-info">
-              <div class="q-name">{{ clip.split('\\').pop().replace(/\.mp4$/i, '') }}</div>
+              <div class="q-name">
+                {{
+                  clip
+                    .split('\\')
+                    .pop()
+                    .replace(/\.mp4$/i, '')
+                }}
+              </div>
             </div>
           </div>
         </div>
@@ -486,6 +549,4 @@ onUnmounted(() => {
   </div>
 </template>
 
-<style>
-
-</style>
+<style></style>

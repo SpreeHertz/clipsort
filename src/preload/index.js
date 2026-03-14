@@ -11,9 +11,8 @@ if (process.contextIsolated) {
   try {
     contextBridge.exposeInMainWorld('electron', electronAPI)
     contextBridge.exposeInMainWorld('api', {
-      selectFolder: () => ipcRenderer.invoke('select-folder'),
+      selectFolder: () => ipcRenderer.invoke('select-folder')
     })
-   
   } catch (error) {
     console.error(error)
   }

@@ -19,7 +19,7 @@ function createWindow() {
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
-      webSecurity: false,
+      webSecurity: false
     }
   })
 
@@ -87,13 +87,13 @@ ipcMain.handle('get-clips', async (_, folderPath) => {
 
 ipcMain.handle('rename-clip', async (_, oldPath, newName) => {
   if (!newName || newName.trim() === '') return { success: false, path: oldPath }
-  
+
   const dir = dirname(oldPath)
   const ext = oldPath.endsWith('.MP4') ? '.MP4' : '.mp4'
   const newPath = join(dir, newName.trim() + ext)
-  
-  const wait = (ms) => new Promise(r => setTimeout(r, ms))
-  
+
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms))
+
   for (let i = 0; i < 5; i++) {
     try {
       fs.renameSync(oldPath, newPath)
@@ -110,7 +110,7 @@ ipcMain.handle('rename-clip', async (_, oldPath, newName) => {
 
 // FIX: retry loop for EBUSY
 ipcMain.handle('delete-clip', async (_, filePath) => {
-  const wait = (ms) => new Promise(r => setTimeout(r, ms))
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms))
   for (let i = 0; i < 5; i++) {
     try {
       await fs.promises.unlink(filePath)
@@ -128,16 +128,14 @@ ipcMain.handle('delete-clip', async (_, filePath) => {
 ipcMain.handle('get-thumbnail', async (_, videoPath) => {
   const outPath = join(os.tmpdir(), `thumb_${Date.now()}.jpg`)
   return new Promise((resolve, reject) => {
-    execFile(ffmpeg, [
-      '-i', videoPath,
-      '-ss', '00:00:01',
-      '-vframes', '1',
-      '-vf', 'scale=160:-1',
-      outPath
-    ], (err) => {
-      if (err) reject(err)
-      else resolve(outPath)
-    })
+    execFile(
+      ffmpeg,
+      ['-i', videoPath, '-ss', '00:00:01', '-vframes', '1', '-vf', 'scale=160:-1', outPath],
+      (err) => {
+        if (err) reject(err)
+        else resolve(outPath)
+      }
+    )
   })
 })
 
@@ -153,7 +151,7 @@ function readState() {
   }
 }
 
-ipcMain.handle('load-state', () =>{
+ipcMain.handle('load-state', () => {
   const data = readState()
   console.log('load-state returning', data)
   return data
@@ -162,7 +160,6 @@ ipcMain.handle('load-state', () =>{
 ipcMain.handle('save-state', (_, data) => {
   console.log('save-state received', data)
   fs.writeFileSync(statePath, JSON.stringify(data))
-  
 })
 console.log('statePath:', statePath)
 ipcMain.handle('get-scrub-thumbnails', async (_, videoPath, duration) => {
@@ -170,16 +167,14 @@ ipcMain.handle('get-scrub-thumbnails', async (_, videoPath, duration) => {
   const paths = []
 
   for (let i = 0; i <= count; i++) {
-    const time = (i / count) * duration  // percentage-based, not fixed interval
+    const time = (i / count) * duration // percentage-based, not fixed interval
     const outPath = join(os.tmpdir(), `scrub_${Date.now()}_${i}.jpg`)
     await new Promise((resolve) => {
-      execFile(ffmpeg, [
-        '-ss', String(time),
-        '-i', videoPath,
-        '-vframes', '1',
-        '-vf', 'scale=160:-1',
-        outPath
-      ], () => resolve())
+      execFile(
+        ffmpeg,
+        ['-ss', String(time), '-i', videoPath, '-vframes', '1', '-vf', 'scale=160:-1', outPath],
+        () => resolve()
+      )
     })
     paths.push({ time, path: outPath })
   }
