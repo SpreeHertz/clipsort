@@ -19,6 +19,7 @@ const scrubThumbs = ref([])  // [{ time, path }]
 const hoverTime = ref(null)
 const hoverX = ref(0)
 const hoverThumb = ref(null)
+const overlayHidden = ref(false)
 // Playback
 
 function togglePlay() {
@@ -57,6 +58,14 @@ async function loadScrubThumbs() {
     currentClip.value,
     duration
   )
+}
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    videoEl.value.parentElement.requestFullscreen()
+  } else {
+    document.exitFullscreen()
+  }
 }
 
 function handleVideoLoaded() {
@@ -111,6 +120,10 @@ watch(currentIndex, (i) => {
   scrubThumbs.value = []  // ← clear old thumbs
   saveState()
 })
+
+function toggleOverlay() {
+  overlayHidden.value = !overlayHidden.value
+}
 
 // State persistence
 
@@ -269,6 +282,15 @@ onUnmounted(() => {
 </script>
 
 <template>
+
+  <!---fullscreen svg -->
+  <svg style="display:none">
+  <symbol id="cis-fullscreen" viewBox="0 0 512 512">
+    <polygon fill="currentColor" points="224 80 224 16 16 16 16 224 80 224 80 125.255 197.373 242.627 242.627 197.373 125.255 80 224 80"/>
+    <polygon fill="currentColor" points="432 288 432 386.745 310.627 265.373 265.373 310.627 386.745 432 288 432 288 496 496 496 496 288 432 288"/>
+  </symbol>
+</svg>
+
   <!-- EMPTY STATE -->
   <div v-if="!clips.length" class="empty-state">
     <div class="empty-inner">
@@ -295,9 +317,9 @@ onUnmounted(() => {
   />
 
   <!-- overlay: gradient + title + counter -->
-  <div class="overlay">
-    <div class="overlay-title">{{ currentClip?.split('\\').pop().replace(/\.mp4$/i, '') }}</div>
-    <div class="overlay-meta">
+  <div class="overlay" >
+    <div class="overlay-title" v-show="!overlayHidden">{{ currentClip?.split('\\').pop().replace(/\.mp4$/i, '') }}</div>
+    <div class="overlay-meta" v-show="!overlayHidden">
       <span class="counter">{{ currentIndex + 1 }}<span class="counter-sep">/</span>{{ clips.length }}</span>
     </div>
   </div>
@@ -351,6 +373,11 @@ onUnmounted(() => {
           <path d="M18.14 20.68c.365 0 .672-.107 1.038-.323l8.508-4.997c.623-.365.938-.814.938-1.37 0-.564-.307-.988-.938-1.361l-8.508-4.997c-.366-.216-.68-.324-1.046-.324-.73 0-1.337.556-1.337 1.569v4.773c-.108-.399-.406-.73-.904-1.021L7.382 7.632c-.357-.216-.672-.324-1.037-.324-.73 0-1.345.556-1.345 1.569v10.235c0 1.013.614 1.569 1.345 1.569.365 0 .68-.108 1.037-.324l8.509-4.997c.49-.29.796-.631.904-1.038v4.79c0 1.013.615 1.569 1.345 1.569z" fill="currentColor" fill-rule="nonzero"/>
         </svg>
       </button>
+      <button @click="toggleFullscreen" class="tbtn">
+  <svg width="14" height="14" viewBox="0 0 512 512">
+    <use href="#cis-fullscreen" />
+  </svg>
+</button>
     </div>
   </div>
 </div>
@@ -367,14 +394,16 @@ onUnmounted(() => {
       <button class="abar-btn del" @click="deleteClip">Delete</button>
       <div class="divider" />
       <div class="skip-row">
-        <span class="skip-label">Last</span>
+        <span class="skip-label">Skip to last</span>
         <input class="skip-num" type="number" v-model="skipSeconds" min="1" />
         <span class="skip-label">seconds</span>
         <div class="toggle-wrap" :class="{ off: !skipEnabled }" @click="skipEnabled = !skipEnabled">
           <div class="toggle-knob" />
         </div>
       </div>
+      <button class="abar-btn" @click="toggleOverlay"> {{ overlayHidden ? 'Show overlay' : 'Hide overlay' }}</button>
       <button class="abar-btn" @click="pickFolder">Change Folder</button>
+      
 <div class="divider" />
     </div>
 
@@ -382,8 +411,8 @@ onUnmounted(() => {
     <div class="bottom-row">
       <div class="queue-card">
         <div class="queue-header">
-          <span>Queue</span>
-          <span>{{ currentIndex + 1 }} / {{ clips.length }}</span>
+          <span class="queue-text">Queue</span>
+          <span class="queue-text">{{ currentIndex + 1 }} / {{ clips.length }}</span>
         </div>
         <div class="queue-list">
           <div
@@ -471,7 +500,7 @@ html, body { background: #000; color: #fff; height: 100%; }
   position: absolute;
   bottom: 0; left: 0; right: 0;
   padding: 120px 28px 75px;
-  background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.4) 40%, transparent 100%);
+  background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.4) 40%, transparent 50%);
   pointer-events: none;
   z-index: 5;
 }
@@ -495,7 +524,7 @@ html, body { background: #000; color: #fff; height: 100%; }
   color: rgba(255, 255, 255, 0.636);  /* dimmer, subordinate to title */
 }
 
-.duration-label { font-size: 11px; font-weight: 300; color: rgba(255,255,255,0.4); font-variant-numeric: tabular-nums; }
+.duration-label { font-size: 11px; font-weight: 300; color: rgba(255, 255, 255, 0.75); font-variant-numeric: tabular-nums; }
 
 
 .counter-sep { color: rgba(255,255,255,0.25); margin: 0 3px; }
@@ -667,6 +696,10 @@ input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.queue-text {
+  color: rgba(255, 255, 255, 0.414);
+}
+
 .queue-item.now .q-name { color: #fff; }
 .hint-area {
   flex: 1;
