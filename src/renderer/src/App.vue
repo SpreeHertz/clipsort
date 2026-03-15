@@ -26,14 +26,10 @@ const overlayHidden = ref(false)
 const alertMessage = ref('')
 const frozenFrame = ref(null)
 const graphElements = ref([])
-
-
-
+const graphVisible = ref(false)
 // cards for temporary messages
 function showAlert(message) {
   alertMessage.value = message
-  console.log('alert called', message)
-  console.trace('showAlert called with:', message)
   alertMessage.value = message
   setTimeout(() => (alertMessage.value = ''), 3500)
   setTimeout(() => {
@@ -85,7 +81,6 @@ const friends = ['alen', 'rakeeb']
 watch(clips, (newClips) => {
   buildGraphData(newClips, friends)
   graphElements.value = buildGraphData(newClips, friends)
-
 })
 
 function toggleFullscreen() {
@@ -158,6 +153,10 @@ watch(currentIndex, () => {
 
 function toggleOverlay() {
   overlayHidden.value = !overlayHidden.value
+}
+
+function toggleGraphView() {
+  graphVisible.value = !graphVisible.value
 }
 
 // State persistence
@@ -501,6 +500,9 @@ onUnmounted(() => {
       <button class="abar-btn" @click="toggleOverlay">
         {{ overlayHidden ? 'Show overlay' : 'Hide overlay' }}
       </button>
+      <button class="abar-btn" @click="toggleGraphView">
+        {{ graphVisible ? 'Toggle graph view' : 'Hide graph view' }}
+      </button>
       <button class="abar-btn" @click="pickFolder">Change Folder</button>
 
       <div class="divider" />
@@ -550,15 +552,19 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <div class="hint-area">
+<GraphView v-show="!graphVisible" :elements="graphElements"  style="flex: 1; height: 200px; border-style: solid; border-color: #474747; border-radius: 5px;"/> 
+
+<!-- <div class="hint-area">
         <span class="hint"><span class="kbd">←</span><span class="kbd">→</span> navigate</span>
         <span class="hint"><span class="kbd">Space</span> play/pause</span>
         <span class="hint"><span class="kbd">↵</span> rename & next</span>
         <span class="hint"><span class="kbd">Del</span> delete (permanent)</span>
-      </div>
+      </div> -->
+      
     </div>
+
   </div>
-  <GraphView :elements="graphElements" />
+     
 </template>
 
 <style></style>

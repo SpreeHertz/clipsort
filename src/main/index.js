@@ -58,7 +58,7 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
 
-// ── IPC ────────────────────────────────────────────────────────────────────────
+// IPC
 
 ipcMain.handle('select-folder', async () => {
   const result = await dialog.showOpenDialog({ properties: ['openDirectory'] })
@@ -66,7 +66,6 @@ ipcMain.handle('select-folder', async () => {
   return result.filePaths[0]
 })
 
-// FIX: case-insensitive .mp4 check
 function getClipsRecursively(dir) {
   let results = []
   const entries = fs.readdirSync(dir, { withFileTypes: true })
@@ -108,7 +107,6 @@ ipcMain.handle('rename-clip', async (_, oldPath, newName) => {
   }
 })
 
-// FIX: retry loop for EBUSY
 ipcMain.handle('delete-clip', async (_, filePath) => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms))
   for (let i = 0; i < 5; i++) {
@@ -139,7 +137,7 @@ ipcMain.handle('get-thumbnail', async (_, videoPath) => {
   })
 })
 
-// ── State (single source of truth, replaces localStorage) ─────────────────────
+// State (single source of truth, replaces localStorage)
 
 const statePath = join(app.getPath('userData'), 'state.json')
 

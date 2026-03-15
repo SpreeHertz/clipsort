@@ -1,33 +1,30 @@
 <script setup>
-import { onMounted, ref, toRaw, watch } from 'vue'
+import { watch, ref, onMounted, toRaw } from 'vue'
 import cytoscape from 'cytoscape'
 
 const props = defineProps(['elements'])
 const graphContainer = ref(null)
+let cy = null
 
-watch(() => props.elements, (newElements) =>{
-     if (!newElements?.length) return
-  const raw = toRaw(newElements)
-  console.log('initializing cytoscape with:', raw.length, 'elements')
-    cytoscape({
+function initCy(elements) {
+  if (!graphContainer.value || !elements?.length) return
+  cy = cytoscape({
     container: graphContainer.value,
-    elements: props.elements,
+    elements: toRaw(elements),
     style: [
-      { selector: 'node.friend', style: { 'background-color': '#666', label: 'data(label)' } },
-      {
-        selector: 'node.diamond',
-        style: { shape: 'diamond', 'background-color': '#4CAF50', label: 'data(label)' }
-      },
-      { selector: 'node.solo', style: { 'background-color': '#888', label: 'data(label)' } },
-      { selector: 'edge', style: { width: 2, 'line-color': '#555' } }
+      { selector: 'node.friend', style: { 'background-color': '#666', 'label': 'data(label)', 'color': '#fff' } },
+      { selector: 'node.diamond', style: { 'shape': 'diamond', 'background-color': '#4CAF50', 'label': 'data(label)', 'color': '#fff' } },
+      { selector: 'node.solo', style: { 'background-color': '#888', 'label': 'data(label)', 'color': '#fff' } },
+      { selector: 'edge', style: { 'width': 2, 'line-color': '#555' } }
     ],
-    layout: { name: 'cose' },
-    
-  }, {deep: true})
-})
+    layout: { name: 'cose' }
+  })
+}
 
+onMounted(() => initCy(props.elements))
+watch(() => props.elements, (newElements) => initCy(newElements), { deep: true })
 </script>
 
 <template>
- <div ref="graphContainer" style="width: 600px; height: 400px;"></div>
+ <div class="graph-container" ref="graphContainer" style="height: 100%; width: 100%; flex: 1; "></div>
 </template>
