@@ -1,6 +1,8 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import './components/App.css'
+import { buildGraphData } from './graph'
+import GraphView from './components/GraphView.vue'
 
 const folder = ref(null)
 const clips = ref([])
@@ -23,6 +25,9 @@ const hoverThumb = ref(null)
 const overlayHidden = ref(false)
 const alertMessage = ref('')
 const frozenFrame = ref(null)
+const graphElements = ref([])
+
+
 
 // cards for temporary messages
 function showAlert(message) {
@@ -76,6 +81,12 @@ async function loadScrubThumbs() {
     duration
   )
 }
+const friends = ['alen', 'rakeeb']
+watch(clips, (newClips) => {
+  buildGraphData(newClips, friends)
+  graphElements.value = buildGraphData(newClips, friends)
+
+})
 
 function toggleFullscreen() {
   if (!document.fullscreenElement) {
@@ -547,6 +558,7 @@ onUnmounted(() => {
       </div>
     </div>
   </div>
+  <GraphView :elements="graphElements" />
 </template>
 
 <style></style>
