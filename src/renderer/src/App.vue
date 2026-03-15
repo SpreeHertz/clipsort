@@ -324,6 +324,11 @@ function queueThumb(clip, el) {
   observer.observe(el)
 }
 
+function skipToBeginning() {
+  if (!videoEl.value) return
+  videoEl.value.currentTime = 0
+}
+
 // Keyboard
 
 function handleKeydown(e) {
@@ -337,6 +342,7 @@ function handleKeydown(e) {
   if (e.key === 'Enter') renameClip()
   if (e.key === 'Delete') deleteClip()
   if (e.key == 'F11') toggleFullscreen()
+  if (e.key == '0') skipToBeginning()
 }
 
 //  Lifecycle
