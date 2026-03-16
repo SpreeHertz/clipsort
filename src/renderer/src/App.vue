@@ -27,6 +27,7 @@ const alertMessage = ref('')
 const frozenFrame = ref(null)
 const graphElements = ref([])
 const graphVisible = ref(false)
+
 // cards for temporary messages
 function showAlert(message) {
   alertMessage.value = message
@@ -201,7 +202,10 @@ async function initClips(folderPath, savedIndex = 0) {
 
 async function pickFolder() {
   const picked = await window.electron.ipcRenderer.invoke('select-folder')
-  if (!picked) return
+  if (!picked) {
+    showAlert("No folder picked.")
+    return
+  }
   folder.value = picked
   const ok = await initClips(picked, 0)
   if (ok) await saveState()
@@ -321,12 +325,12 @@ function queueThumb(clip, el) {
   observer.observe(el)
 }
 
+// Keyboard
+
 function skipToBeginning() {
   if (!videoEl.value) return
   videoEl.value.currentTime = 0
 }
-
-// Keyboard
 
 function handleKeydown(e) {
   if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'F11'].includes(e.code)) {
@@ -362,7 +366,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <!---fullscreen svg -->
+  <!-- fullscreen svg -->
   <svg style="display: none">
     <symbol id="cis-fullscreen" viewBox="0 0 512 512">
       <polygon
@@ -556,18 +560,17 @@ onUnmounted(() => {
       </div>
 
 <GraphView v-show="!graphVisible" :elements="graphElements"  style="flex: 1; height: 200px; border-style: solid; border-color: #474747; border-radius: 5px;"/> 
-
-<!-- <div class="hint-area">
-        <span class="hint"><span class="kbd">←</span><span class="kbd">→</span> navigate</span>
-        <span class="hint"><span class="kbd">Space</span> play/pause</span>
-        <span class="hint"><span class="kbd">↵</span> rename & next</span>
-        <span class="hint"><span class="kbd">Del</span> delete (permanent)</span>
-      </div> -->
       
     </div>
 
   </div>
-     
+     <div class="hint-area">
+        <span class="hint"><span class="kbd">←</span><span class="kbd">→</span> navigate</span>
+        <span class="hint"><span class="kbd">Space</span> play/pause</span>
+        <span class="hint"><span class="kbd">↵</span> rename & next</span>
+        <span class="hint"><span class="kbd">0</span> skip to beginning</span>
+        <span class="hint"><span class="kbd">Del</span> delete (permanent)</span>
+      </div>
 </template>
 
 <style></style>
