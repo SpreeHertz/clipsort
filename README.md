@@ -2,6 +2,8 @@
 ![show ui](https://github.com/SpreeHertz/clipsort/blob/main/resources/ui.png?raw=true)
 This Electron app help sorts gaming clips effectively. 
 
+reminder: screenshot shows last 10 seconds on but progress bar isn't at last 10 seconds
+
 ## Features
 
 - Rename and delete on-the-fly
