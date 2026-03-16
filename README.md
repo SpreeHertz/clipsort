@@ -1,5 +1,5 @@
 # ClipSort
-
+![show ui](https://github.com/SpreeHertz/clipsort/blob/main/resources/ui.png?raw=true)
 This Electron app help sorts gaming clips effectively. 
 
 ## Features
