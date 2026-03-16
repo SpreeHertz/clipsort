@@ -44,7 +44,6 @@ for (const friend in solo) {
   const count = solo[friend].length
   elements.push({ data: { id: `solo-${friend}`, label: `${friend} (${count})` }, classes: 'solo' })
 }
-console.log(elements)
 return elements
 
 }

@@ -20,7 +20,11 @@ function updateGraph(elements) {
         { selector: 'node.solo', style: { 'background-color': '#888', 'label': 'data(label)', 'color': '#fff' } },
         { selector: 'edge', style: { 'width': 2, 'line-color': '#555' } }
       ],
-      layout: { name: 'cose', animate: false }
+      layout: { 
+        name: 'cose', 
+        animate: false,
+       boundingBox: { x1: 0, y1: 0, w: graphContainer.value.clientWidth, h: graphContainer.value.clientHeight },
+      }
     })
   } else {
     // update: replace elements without leaking memory
