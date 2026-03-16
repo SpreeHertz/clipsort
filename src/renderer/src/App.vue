@@ -3,6 +3,7 @@ import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import './components/App.css'
 import { buildGraphData } from './graph'
 import GraphView from './components/GraphView.vue'
+import FriendsModal from './components/FriendsModal.vue'
 
 const folder = ref(null)
 const clips = ref([])
@@ -27,6 +28,8 @@ const alertMessage = ref('')
 const frozenFrame = ref(null)
 const graphElements = ref([])
 const graphVisible = ref(false)
+const isFriendsModalOpen = ref(false)
+const wasPlayingBeforeModal = ref(false)
 
 // cards for temporary messages
 function showAlert(message) {
@@ -76,10 +79,24 @@ async function loadScrubThumbs() {
     duration
   )
 }
-const friends = ['alen', 'rakeeb']
-watch(clips, (newClips) => {
-  graphElements.value = buildGraphData(newClips, friends)
-})
+const friends = ref(['alice', 'bob']) // Changed from const to ref
+
+const addFriend = (name) => {
+  if (name && !friends.value.includes(name)) {
+    friends.value.push(name)
+    saveState() // This triggers your existing save logic
+  }
+}
+
+const removeFriend = (name) => {
+  friends.value = friends.value.filter(f => f !== name)
+  saveState()
+}
+
+watch([clips, friends], ([newClips, newFriends]) => {
+  graphElements.value = buildGraphData(newClips, newFriends)
+}, { immediate: true })
+
 
 function toggleFullscreen() {
   if (!document.fullscreenElement) {
@@ -161,18 +178,18 @@ function toggleGraphView() {
 
 async function saveState() {
   if (!folder.value) return
-  console.log('saving state', {
-    folder: folder.value,
-    skipEnabled: skipEnabled.value,
-    skipSeconds: skipSeconds.value
-  })
+  // console.log('saving state', {
+  //   folder: folder.value,
+  //   skipEnabled: skipEnabled.value,
+  //   skipSeconds: skipSeconds.value
+  // })
   await window.electron.ipcRenderer.invoke(
     'save-state',
     {
       folder: folder.value,
       index: currentIndex.value,
       skipEnabled: skipEnabled.value,
-      skipSeconds: skipSeconds.value
+      skipSeconds: skipSeconds.value,
     },
     400
   )
@@ -245,6 +262,7 @@ async function renameClip() {
   videoMounted.value = true
   next()
 }
+
 
 async function deleteClip() {
   const deletedName = currentClip.value
@@ -333,6 +351,7 @@ function skipToBeginning() {
 }
 
 function handleKeydown(e) {
+  if (isFriendsModalOpen.value) return
   if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'F11'].includes(e.code)) {
     if (document.activeElement?.classList.contains('rename-field')) return
     e.preventDefault()
@@ -345,6 +364,22 @@ function handleKeydown(e) {
   if (e.key == 'F11') toggleFullscreen()
   if (e.key == '0') skipToBeginning()
 }
+
+// Friends modal
+
+const toggleFriendsModal = (open) => {
+  isFriendsModalOpen.value = open
+  if (open) {
+    videoEl.value.pause() 
+    playing.value = false
+  } else {
+    if (wasPlayingBeforeModal.value) {
+      videoEl.value.play()
+      playing.value = true
+    }
+  }
+}
+
 
 //  Lifecycle
 
@@ -504,6 +539,7 @@ onUnmounted(() => {
           <div class="toggle-knob" />
         </div>
       </div>
+      <button class="abar-btn" @click="toggleFriendsModal(true)">Define friends</button>
       <button class="abar-btn" @click="toggleOverlay">
         {{ overlayHidden ? 'Show overlay' : 'Hide overlay' }}
       </button>
@@ -571,6 +607,15 @@ onUnmounted(() => {
         <span class="hint"><span class="kbd">0</span> skip to beginning</span>
         <span class="hint"><span class="kbd">Del</span> delete (permanent)</span>
       </div>
+
+      <FriendsModal 
+        :is-open="isFriendsModalOpen" 
+        :friends="friends"
+        @close="toggleFriendsModal(false)"
+        @add="addFriend"
+        @remove="removeFriend"
+        />
+
 </template>
 
 <style></style>
