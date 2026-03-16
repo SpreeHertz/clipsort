@@ -1,9 +1,15 @@
-# clipsorter
+# ClipSort
 
-An Electron application with Vue
-DELETE DOES PERMA DELETE BTW
+This Electron app help sorts gaming clips effectively. 
 
-## Project Setup
+## Features
+
+- Rename and delete on-the-fly
+- Obsidian-like graph view for viewing clips by friend names
+- Get clips recursively through folders and queue them
+- Skip to last `n` seconds if preferred 
+- Clean UI
+
 
 ### Install
 
