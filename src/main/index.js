@@ -85,27 +85,26 @@ ipcMain.handle('get-clips', async (_, folderPath) => {
 })
 
 ipcMain.handle('rename-clip', async (_, oldPath, newName) => {
-  if (!newName || newName.trim() === '') return { success: false, path: oldPath }
+  if (!newName?.trim()) return { success: false, path: oldPath };
 
-  const dir = dirname(oldPath)
-  const ext = oldPath.endsWith('.MP4') ? '.MP4' : '.mp4'
-  const newPath = join(dir, newName.trim() + ext)
-
-  const wait = (ms) => new Promise((r) => setTimeout(r, ms))
+  const dir = dirname(oldPath);
+  const ext = oldPath.toLowerCase().endsWith('.mp4') ? '.mp4' : '.mp4'; // normalize
+  const newPath = join(dir, newName.trim() + ext);
 
   for (let i = 0; i < 5; i++) {
     try {
-      fs.renameSync(oldPath, newPath)
-      return { success: true, path: newPath }
+      await fs.promises.rename(oldPath, newPath);
+      return { success: true, path: newPath };
     } catch (err) {
-      if (err.code === 'EBUSY' && i < 4) {
-        await wait(300 * (i + 1))
+      if (err.code === 'EBUSY' || err.code === 'EPERM') {
+        await new Promise(r => setTimeout(r, 500 * (i + 1)));
       } else {
-        return { success: false, path: oldPath, error: err.message }
+        return { success: false, path: oldPath, error: err.message };
       }
     }
   }
-})
+  return { success: false, path: oldPath, error: 'File is locked by another process.' };
+});
 
 ipcMain.handle('delete-clip', async (_, filePath) => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms))
@@ -155,27 +154,53 @@ ipcMain.handle('load-state', () => {
   return data
 })
 
-ipcMain.handle('save-state', (_, data) => {
-  console.log('save-state received', data)
-  fs.writeFileSync(statePath, JSON.stringify(data))
-})
-console.log('statePath:', statePath)
-ipcMain.handle('get-scrub-thumbnails', async (_, videoPath, duration) => {
-  const count = 10
-  const paths = []
-
-  for (let i = 0; i <= count; i++) {
-    const time = (i / count) * duration // percentage-based, not fixed interval
-    const outPath = join(os.tmpdir(), `scrub_${Date.now()}_${i}.jpg`)
-    await new Promise((resolve) => {
-      execFile(
-        ffmpeg,
-        ['-ss', String(time), '-i', videoPath, '-vframes', '1', '-vf', 'scale=160:-1', outPath],
-        () => resolve()
-      )
-    })
-    paths.push({ time, path: outPath })
+ipcMain.handle('save-state', async (_, data) => {
+  try {
+    await fs.promises.writeFile(statePath, JSON.stringify(data, null, 2));
+  } catch (err) {
+    console.error('failed to save state:', err);
   }
+});
 
-  return paths
-})
+// console.log('statePath:', statePath)
+
+ipcMain.handle('get-scrub-thumbnails', async (_, videoPath, duration) => {
+  const count = 10;
+  const paths = [];
+  const tempDir = os.tmpdir();
+  const timestamp = Date.now();
+
+  // generate the filter string: select='eq(n,0)+eq(n,val1)+eq(n,val2)...'
+  // or use a simpler approach: fps filter
+  const interval = duration / count;
+
+  return new Promise((resolve) => {
+    // we use %03d to output multiple files (scrub_123_001.jpg, scrub_123_002.jpg, etc.)
+    const outPattern = join(tempDir, `scrub_${timestamp}_%03d.jpg`);
+    
+    execFile(
+      ffmpeg,
+      [
+        '-i', videoPath,
+        '-vf', `fps=1/${interval},scale=160:-1`, 
+        outPattern
+      ],
+      (err) => {
+        if (err) {
+          console.error(err);
+          return resolve([]);
+        }
+
+        // read the generated files back into the array
+        for (let i = 1; i <= count + 1; i++) {
+          const fileName = `scrub_${timestamp}_${String(i).padStart(3, '0')}.jpg`;
+          paths.push({ 
+            time: (i - 1) * interval, 
+            path: join(tempDir, fileName) 
+          });
+        }
+        resolve(paths);
+      }
+    );
+  });
+});
