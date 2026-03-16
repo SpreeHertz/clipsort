@@ -30,8 +30,6 @@ const graphVisible = ref(false)
 // cards for temporary messages
 function showAlert(message) {
   alertMessage.value = message
-  alertMessage.value = message
-  setTimeout(() => (alertMessage.value = ''), 3500)
   setTimeout(() => {
     alertMessage.value = ''
   }, 3500)
@@ -79,7 +77,6 @@ async function loadScrubThumbs() {
 }
 const friends = ['alen', 'rakeeb']
 watch(clips, (newClips) => {
-  buildGraphData(newClips, friends)
   graphElements.value = buildGraphData(newClips, friends)
 })
 
