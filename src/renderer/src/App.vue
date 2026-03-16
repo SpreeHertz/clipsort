@@ -94,7 +94,6 @@ async function loadScrubThumbs() {
   }
 }
 
-
 const addFriend = (name) => {
   if (name && !friends.value.includes(name)) {
     friends.value.push(name)
