@@ -123,6 +123,10 @@ ipcMain.handle('delete-clip', async (_, filePath) => {
 })
 
 ipcMain.handle('get-thumbnail', async (_, videoPath) => {
+  if (!fs.existsSync(videoPath)) {
+    console.error("thumbnail failed: file does not exist", videoPath);
+    return null;
+  }
   const outPath = join(os.tmpdir(), `thumb_${Date.now()}.jpg`)
   return new Promise((resolve, reject) => {
     execFile(

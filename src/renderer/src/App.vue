@@ -30,6 +30,7 @@ const graphElements = ref([])
 const graphVisible = ref(false)
 const isFriendsModalOpen = ref(false)
 const wasPlayingBeforeModal = ref(false)
+const friends = ref(['alice', 'bob']) 
 
 // cards for temporary messages
 function showAlert(message) {
@@ -71,20 +72,33 @@ function updateProgress() {
 // call this after video loads
 async function loadScrubThumbs() {
   scrubThumbs.value = []
-  if (!videoEl.value) return
+  
+  // 1. check if element exists
+  // 2. check if duration is a valid number and > 0
+  if (!videoEl.value || isNaN(videoEl.value.duration) || videoEl.value.duration <= 0) {
+    return
+  }
+
   const duration = videoEl.value.duration
-  scrubThumbs.value = await window.electron.ipcRenderer.invoke(
+  const clipToLoad = currentClip.value
+
+  const result = await window.electron.ipcRenderer.invoke(
     'get-scrub-thumbnails',
-    currentClip.value,
+    clipToLoad,
     duration
   )
+
+  // 3. check if we are still on the same clip when the async work finishes
+  if (currentClip.value === clipToLoad) {
+    scrubThumbs.value = result
+  }
 }
-const friends = ref(['alice', 'bob']) // Changed from const to ref
+
 
 const addFriend = (name) => {
   if (name && !friends.value.includes(name)) {
     friends.value.push(name)
-    saveState() // This triggers your existing save logic
+    saveState()
   }
 }
 
@@ -231,20 +245,33 @@ async function pickFolder() {
 //  Rename / Delete
 
 async function renameClip() {
+  // new name: editedName.value (full path)
+  // old name: currentClip.value (full path)
   const invalid = /[\\/:*?"<>|]/
   if (invalid.test(editedName.value)) {
     alert('Files cannot be renamed with this special character. Please remove it.')
     return
   }
-  videoEl.value.src = ''
+  const oldName = currentClip.value.split('\\').pop().replace(/\.mp4$/i, '')
+  const newName = editedName.value.split('\\').pop().replace(/\.mp4$/i, '')
+  if (oldName === newName) {
+    next()
+    return
+  }
+  // check if the ref actually exists before accessing properties
+  if (videoEl.value) {
+    videoEl.value.pause()
+    videoEl.value.removeAttribute('src')
+    videoEl.value.load()
+  }
+
   const inputEl = document.querySelector('.rename-field')
   videoMounted.value = false
+  
   await nextTick()
-  await new Promise((r) => setTimeout(r, 300))
-  const oldName = currentClip.value
-    ?.split('\\')
-    .pop()
-    .replace(/\.mp4$/i, '')
+  await new Promise((r) => setTimeout(r, 500))
+  
+
   const result = await window.electron.ipcRenderer.invoke(
     'rename-clip',
     currentClip.value,
@@ -252,17 +279,20 @@ async function renameClip() {
   )
 
   if (!result.success) {
-    alert('Could not rename. Try again. (Maybe try skipping to the last second then rename?)')
+    alert('Could not rename. Try again.')
     videoMounted.value = true
     return
   }
+
   showAlert(`"${oldName}" renamed to "${editedName.value}" successfully.`)
   clips.value[currentIndex.value] = result.path
-  inputEl?.focus()
+  
   videoMounted.value = true
+  await nextTick() 
+  
+  inputEl?.focus()
   next()
 }
-
 
 async function deleteClip() {
   const deletedName = currentClip.value
@@ -276,7 +306,7 @@ async function deleteClip() {
   frozenFrame.value = canvas.toDataURL()
   videoMounted.value = false
   await nextTick()
-  await new Promise((r) => setTimeout(r, 300))
+  await new Promise((r) => setTimeout(r, 500))
 
   const result = await window.electron.ipcRenderer.invoke('delete-clip', currentClip.value)
 

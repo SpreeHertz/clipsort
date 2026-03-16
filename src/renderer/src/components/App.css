@@ -93,7 +93,13 @@ body {
   width: 100%;
   background: #000;
 }
-
+.video-wrap:fullscreen .video-el {
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: none !important;
+  max-height: none !important;
+  object-fit: contain; 
+}
 .video-el {
   width: 100%;
   height: auto;
