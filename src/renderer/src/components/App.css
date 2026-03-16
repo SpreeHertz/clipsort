@@ -92,19 +92,14 @@ body {
   position: relative;
   width: 100%;
   background: #000;
-  aspect-ratio: 16/9;
 }
+
 .video-el {
   width: 100%;
   height: auto;
+  max-height: 70vh;  /* prevent portrait videos from taking the whole screen */
   display: block;
-}
-.video-el,
-.frozen-frame {
-  width: 100%;
-  height: 100%;
   object-fit: contain;
-  display: block;
 }
 /* ── OVERLAY ──
    z-index 5: above video, below transport (10) and progress bar (20)
@@ -137,15 +132,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2px;
-}
-.counter {
-  font-size: 13px;
-  font-weight: 400;
-  color: rgba(255, 255, 255, 0.5);
-}
-.counter-sep {
-  color: rgba(255, 255, 255, 0.25);
-  margin: 0 3px;
 }
 
 .counter {
