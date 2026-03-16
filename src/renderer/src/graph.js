@@ -2,14 +2,19 @@ export function buildGraphData(clips, friends) {
   const coOccurrence = {}
   const solo = {}
 
+  // point #1: lowerCase all friends once for consistent comparison
+  const lowerFriends = friends.map(f => f.toLowerCase())
+
   for (const clip of clips) {
     const fileName = clip
       .split('\\')
       .pop()
       .toLowerCase()
       .replace(/\.mp4$/i, '')
+    
     const words = fileName.split(' ')
-    const found = friends.filter((f) => words.includes(f))
+    // point #2: compare lowerCase words to lowerCase friends
+    const found = lowerFriends.filter((f) => words.includes(f))
 
     if (found.length === 1) {
       const key = found[0]
@@ -21,29 +26,32 @@ export function buildGraphData(clips, friends) {
       coOccurrence[key].push(clip)
     }
   }
+
   const elements = []
 
-// 1. friend nodes
-for (const friend of friends) {
-  elements.push({ data: { id: friend, label: friend }, classes: 'friend' })
-}
+  // 1. friend nodes (using original display names from the props)
+  for (const friend of friends) {
+    elements.push({ data: { id: friend.toLowerCase(), label: friend }, classes: 'friend' })
+  }
 
-// 2. diamond nodes + edges
-for (const key in coOccurrence) {
-  const count = coOccurrence[key].length
-  const diamondId = `diamond-${key}`
-  elements.push({ data: { id: diamondId, label: String(count) }, classes: 'diamond' })
+  // 2. diamond nodes + edges
+  for (const key in coOccurrence) {
+    const count = coOccurrence[key].length
+    const diamondId = `diamond-${key}`
+    elements.push({ data: { id: diamondId, label: String(count) }, classes: 'diamond' })
+    
+    const names = key.split('-')
+    elements.push({ data: { id: `e1-${key}`, source: names[0], target: diamondId } })
+    elements.push({ data: { id: `e2-${key}`, source: names[1], target: diamondId } })
+  }
+
+  // 3. solo nodes
+  for (const friendKey in solo) {
+    const count = solo[friendKey].length
+    // match the label to the display name if possible
+    const displayName = friends.find(f => f.toLowerCase() === friendKey) || friendKey
+    elements.push({ data: { id: `solo-${friendKey}`, label: `${displayName} (${count})` }, classes: 'solo' })
+  }
   
-  const [f1, f2] = key.split('-')
-  elements.push({ data: { id: `e1-${key}`, source: f1, target: diamondId } })
-  elements.push({ data: { id: `e2-${key}`, source: f2, target: diamondId } })
-}
-
-// 3. solo nodes
-for (const friend in solo) {
-  const count = solo[friend].length
-  elements.push({ data: { id: `solo-${friend}`, label: `${friend} (${count})` }, classes: 'solo' })
-}
-return elements
-
+  return elements
 }

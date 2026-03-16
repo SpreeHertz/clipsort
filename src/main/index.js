@@ -204,3 +204,7 @@ ipcMain.handle('get-scrub-thumbnails', async (_, videoPath, duration) => {
     );
   });
 });
+
+ipcMain.handle('open-friends-modal', async () => {
+  
+})
