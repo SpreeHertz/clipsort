@@ -514,8 +514,23 @@ input::-webkit-inner-spin-button {
 }
 
 .transport-row.is-fs {
-  justify-content: space-between;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
 }
+
 .transport-row, .graph-container {
   contain: layout paint;
+}
+.button-group {
+  display: flex;
+  align-items: center;
+  gap: 24px; 
+  margin: 0 auto; 
+}
+
+.rename-field.fs-style {
+  width: 250px;
+  margin-right: 0; /* Let flex handle the gap */
 }

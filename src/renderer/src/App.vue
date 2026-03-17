@@ -541,6 +541,7 @@ onUnmounted(() => {
         placeholder="rename clip…"
         @keyup.enter="renameClip"
       />
+      <div class="button-group">
           <button class="tbtn" @click="prev">
             <svg width="18" height="18" viewBox="0 0 32 28" xmlns="http://www.w3.org/2000/svg">
               <path
@@ -574,6 +575,7 @@ onUnmounted(() => {
               <use href="#cis-fullscreen" />
             </svg>
           </button>
+        </div>
         </div>
       </div>
     </div>
