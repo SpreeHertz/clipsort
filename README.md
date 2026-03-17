@@ -1,16 +1,15 @@
 # ClipSort
-![show ui](https://github.com/SpreeHertz/clipsort/blob/main/resources/ui.png?raw=true)
-This Electron app help sorts gaming clips effectively. 
+![show ui](https://github.com/SpreeHertz/clipsort/blob/main/resources/v2.png?raw=true)
 
-reminder: screenshot shows last 10 seconds on but progress bar isn't at last 10 seconds
+This Electron app helps sort gaming clips quickly and effectively.
 
 ## Features
 
-- Rename and delete on-the-fly
-- Obsidian-like graph view for viewing clips by friend names
-- Get clips recursively through folders and queue them
-- Skip to last `n` seconds if preferred 
-- Clean UI
+- 📂 Rename and delete on-the-fly
+- ⚪ Obsidian-like graph view for viewing clips by friend names
+- 📽 Get clips recursively through folders and queue them
+- ⏩ Skip to last `n` seconds if preferred 
+- 💻 Clean UI
 
 
 ### Install
