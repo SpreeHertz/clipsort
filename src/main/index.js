@@ -66,22 +66,35 @@ ipcMain.handle('select-folder', async () => {
   return result.filePaths[0]
 })
 
-function getClipsRecursively(dir) {
+function getClipsRecursively(dir, checkForFriends = false, friendsList = []) {
   let results = []
   const entries = fs.readdirSync(dir, { withFileTypes: true })
+
   for (const entry of entries) {
     const fullPath = join(dir, entry.name)
+
     if (entry.isDirectory()) {
-      results = results.concat(getClipsRecursively(fullPath))
+      // fixed: pass the arguments through to the recursive call
+      results = results.concat(getClipsRecursively(fullPath, checkForFriends, friendsList))
     } else if (entry.name.toLowerCase().endsWith('.mp4')) {
-      results.push(fullPath)
+      const fileName = entry.name.toLowerCase()
+
+      if (checkForFriends && friendsList.length > 0) {
+        // filter: check if file contains every name in the array
+        const matchesAll = friendsList.every(name => fileName.includes(name.toLowerCase()))
+        if (matchesAll) results.push(fullPath)
+      } else {
+        // no filter: include all clips
+        results.push(fullPath)
+      }
     }
   }
   return results
 }
 
-ipcMain.handle('get-clips', async (_, folderPath) => {
-  return getClipsRecursively(folderPath)
+ipcMain.handle('get-clips', async (_, folderPath, checkForFriends = false, friendsList = []) => {
+  const list = Array.isArray(friendsList) ? friendsList : []
+  return getClipsRecursively(folderPath, checkForFriends, list)
 })
 
 ipcMain.handle('rename-clip', async (_, oldPath, newName) => {

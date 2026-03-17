@@ -57,9 +57,11 @@ watch(() => props.elements, (newElems) => {
   cy.on('tap','node.friend, node.diamond, node.solo', function(evt){
     const node = evt.target
     console.log('tapped', node.id())
+    let coOccurenceNames = node.id().split()
+    
     if (node.id().includes('diamond')) {
-      // coOccurenceNames returns "diamond-name1|name2.., so split them, then make a string
-      const coOccurenceNames = node.id().split('-')[1].split('|').join().replace(',', ' ')
+      // coOccurenceNames returns "diamond-alice|bob.."
+      coOccurenceNames = node.id().split('-')[1].split('|')
       console.log('tapped', coOccurenceNames)
     }
   })
