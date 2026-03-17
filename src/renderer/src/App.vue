@@ -226,7 +226,10 @@ watch([skipEnabled, skipSeconds], (newVals) => {
 
 async function initClips(folderPath, savedIndex = 0) {
   clips.value = await window.electron.ipcRenderer.invoke('get-clips', folderPath)
-  if (!clips.value.length) return false
+  if (!clips.value.length) {
+    showAlert("No clips are inside this folder.")
+    return false
+  }
   currentIndex.value = Math.min(savedIndex, clips.value.length - 1)
   editedName.value = clips.value[currentIndex.value]
     .split('\\')

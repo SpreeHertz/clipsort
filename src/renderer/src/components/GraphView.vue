@@ -54,6 +54,15 @@ watch(() => props.elements, (newElems) => {
   if (!cy) return
   cy.json({ elements: newElems })
   cy.layout({ name: 'cose', animate: true }).run()
+  cy.on('tap','node.friend, node.diamond, node.solo', function(evt){
+    const node = evt.target
+    console.log('tapped', node.id())
+    if (node.id().includes('diamond')) {
+      // coOccurenceNames returns "diamond-name1|name2.., so split them, then make a string
+      const coOccurenceNames = node.id().split('-')[1].split('|').join().replace(',', ' ')
+      console.log('tapped', coOccurenceNames)
+    }
+  })
 }, { deep: true })
 
 onMounted(() => {

@@ -11,7 +11,7 @@ const emit = defineEmits(['close', 'add', 'remove'])
 
 const handleAdd = () => {
   if (newFriend.value.trim()) {
-    emit('add', newFriend.value.trim());
+    emit('add', newFriend.value.trim().toLowerCase());
     newFriend.value = ''; 
   }
 };
@@ -40,10 +40,10 @@ const handleAdd = () => {
 
         <div class="friends-container">
           <div v-for="friend in friends" :key="friend" class="friend-row">
-            <span>{{ friend }}</span>
+            <span>{{ friend.toLowerCase() }}</span>
             <button class="remove-btn" @click="$emit('remove', friend)">Remove</button>
           </div>
-          <p v-if="friends.length === 0" class="empty-state">no friends defined yet.</p>
+          <p v-if="friends.length === 0" class="empty-state">No friends defined yet.</p>
         </div>
       </div>
     </div>
