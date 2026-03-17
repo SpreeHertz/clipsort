@@ -3,10 +3,14 @@ import { onMounted, watch, ref } from 'vue'
 import cytoscape from 'cytoscape'
 
 const props = defineProps({
-  elements: Array
+  elements: Array,
+  currentFolder: String
 })
 
+const emit = defineEmits(['update-clips', 'show-exit-node-btn'])
+
 const cyContainer = ref(null)
+const isNodeSelected = ref(false)
 let cy = null
 
 const initCy = () => {
@@ -54,16 +58,36 @@ watch(() => props.elements, (newElems) => {
   if (!cy) return
   cy.json({ elements: newElems })
   cy.layout({ name: 'cose', animate: true }).run()
-  cy.on('tap','node.friend, node.diamond, node.solo', function(evt){
+  
+  // fix: remove existing listeners to prevent duplicates
+  cy.off('tap', 'node.friend, node.diamond, node.solo')
+  
+  cy.on('tap', 'node.friend, node.diamond, node.solo', async (evt) => {
+    isNodeSelected.value = true
+    emit('show-exit-node-btn', true)
     const node = evt.target
-    console.log('tapped', node.id())
-    let coOccurenceNames = node.id().split()
-    
-    if (node.id().includes('diamond')) {
-      // coOccurenceNames returns "diamond-alice|bob.."
-      coOccurenceNames = node.id().split('-')[1].split('|')
-      console.log('tapped', coOccurenceNames)
+    const id = node.id()
+    let friendsArray = []
+    let isFilterActive = false
+
+    if (id.includes('diamond')) {
+      isFilterActive = true
+      friendsArray = id.split('-')[1].split('|')
+    } else if (node.hasClass('solo') || node.hasClass('friend')) {
+      // logic for solo nodes: just use the name from the ID
+      isFilterActive = true
+      friendsArray = [id] 
     }
+
+    // call the updated IPC handle
+    const clips = await window.electron.ipcRenderer.invoke(
+    'get-clips', 
+    props.currentFolder, 
+    isFilterActive, 
+    friendsArray
+  )
+  
+  emit('update-clips', clips)
   })
 }, { deep: true })
 

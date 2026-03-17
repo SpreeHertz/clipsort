@@ -31,7 +31,7 @@ const graphVisible = ref(true)
 const isFriendsModalOpen = ref(false)
 const wasPlayingBeforeModal = ref(false)
 const friends = ref([])
-
+const isNodeSelected = ref(false)
 // cards for temporary messages
 function showAlert(message) {
   alertMessage.value = message
@@ -584,6 +584,7 @@ onUnmounted(() => {
           <div class="toggle-knob" />
         </div>
       </div>
+        <button class="abar-btn" v-show="isNodeSelected">Exit node</button>
       <button class="abar-btn" @click="toggleFriendsModal(true)">Define friends</button>
       <button class="abar-btn" @click="toggleOverlay">
         {{ overlayHidden ? 'Show overlay' : 'Hide overlay' }}
@@ -640,7 +641,20 @@ onUnmounted(() => {
         </div>
       </div>
 
-<GraphView v-show="graphVisible" :elements="graphElements"  style="flex: 1; height: 200px; border-style: solid; border-color: #474747; border-radius: 5px;"/> 
+<GraphView 
+        v-show="graphVisible" 
+        :elements="graphElements"
+        :current-folder="folder"
+        @update-clips="(newList) => { 
+            clips = newList; 
+            currentIndex = 0; 
+          }"
+        style="flex: 1; 
+        height: 200px; 
+        border-style: solid; 
+        border-color: #474747; 
+        border-radius: 5px;"
+        /> 
       
     </div>
 
