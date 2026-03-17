@@ -1,3 +1,22 @@
+<script setup>
+import { ref } from 'vue'
+
+const newFriend = ref('')
+const props = defineProps({
+  isOpen: Boolean,
+  friends: Array
+})
+
+const emit = defineEmits(['close', 'add', 'remove'])
+
+const handleAdd = () => {
+  if (newFriend.value.trim()) {
+    emit('add', newFriend.value.trim());
+    newFriend.value = ''; 
+  }
+};
+</script>
+
 <template>
   <Teleport to="body">
     <div v-if="isOpen" class="modal-overlay" @click.self="$emit('close')">
@@ -12,7 +31,7 @@
 
         <div class="input-row">
           <input 
-            v-model="newFriendName" 
+            v-model="newFriend" 
             placeholder="e.g. Alice" 
             @keyup.enter="handleAdd"
           />
@@ -30,25 +49,6 @@
     </div>
   </Teleport>
 </template>
-
-<script setup>
-import { ref } from 'vue'
-
-const props = defineProps({
-  isOpen: Boolean,
-  friends: Array
-})
-
-const emit = defineEmits(['close', 'add', 'remove'])
-const newFriendName = ref('')
-
-const handleAdd = () => {
-  if (newFriendName.value.trim()) {
-    emit('add', newFriendName.value.trim())
-    newFriendName.value = ''
-  }
-}
-</script>
 
 <style scoped>
 .modal-overlay {

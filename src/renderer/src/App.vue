@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted, toRaw } from 'vue'
 import './components/App.css'
 import { buildGraphData } from './graph'
 import GraphView from './components/GraphView.vue'
@@ -27,10 +27,10 @@ const overlayHidden = ref(false)
 const alertMessage = ref('')
 const frozenFrame = ref(null)
 const graphElements = ref([])
-const graphVisible = ref(false)
+const graphVisible = ref(true)
 const isFriendsModalOpen = ref(false)
 const wasPlayingBeforeModal = ref(false)
-const friends = ref(['alice', 'bob']) 
+const friends = ref([])
 
 // cards for temporary messages
 function showAlert(message) {
@@ -97,18 +97,15 @@ async function loadScrubThumbs() {
 const addFriend = (name) => {
   if (name && !friends.value.includes(name)) {
     friends.value.push(name)
-    saveState()
-  }
-}
+    console.log('from addFriend', friends.value)
 
-const removeFriend = (name) => {
-  friends.value = friends.value.filter(f => f !== name)
-  saveState()
+  }
 }
 
 watch([clips, friends], ([newClips, newFriends]) => {
   graphElements.value = buildGraphData(newClips, newFriends)
-}, { immediate: true })
+  saveState()
+}, { immediate: true, deep: true })
 
 
 function toggleFullscreen() {
@@ -191,11 +188,13 @@ function toggleGraphView() {
 
 async function saveState() {
   if (!folder.value) return
-  // console.log('saving state', {
-  //   folder: folder.value,
-  //   skipEnabled: skipEnabled.value,
-  //   skipSeconds: skipSeconds.value
-  // })
+  console.log('saving state', {
+    folder: folder.value,
+    skipEnabled: skipEnabled.value,
+    skipSeconds: skipSeconds.value,
+    index: currentIndex.value,
+    friends: toRaw(friends.value)
+  })
   await window.electron.ipcRenderer.invoke(
     'save-state',
     {
@@ -203,10 +202,16 @@ async function saveState() {
       index: currentIndex.value,
       skipEnabled: skipEnabled.value,
       skipSeconds: skipSeconds.value,
+      friends: toRaw(friends.value)
     },
-    400
+  
   )
 }
+const removeFriend = (name) => {
+  friends.value = friends.value.filter(f => f !== name)
+
+}
+
 
 async function loadState() {
   return await window.electron.ipcRenderer.invoke('load-state')
@@ -394,11 +399,13 @@ function handleKeydown(e) {
   if (e.key == '0') skipToBeginning()
 }
 
-// Friends modal
+// Friends modal: pause and resume
 
 const toggleFriendsModal = (open) => {
+
   isFriendsModalOpen.value = open
   if (open) {
+    wasPlayingBeforeModal.value = playing.value
     videoEl.value.pause() 
     playing.value = false
   } else {
@@ -415,9 +422,15 @@ const toggleFriendsModal = (open) => {
 onMounted(async () => {
   window.addEventListener('keydown', handleKeydown)
   const state = await loadState()
-  if (state?.folder) {
+  if (state) {
+    if (state?.folder) {
     folder.value = state.folder
     await initClips(state.folder, state.index ?? 0)
+  }
+
+    if (state.friends) {
+      friends.value = state.friends
+    }
     // set these AFTER initClips so the watch doesn't overwrite them
     skipEnabled.value = state.skipEnabled ?? false
     skipSeconds.value = state.skipSeconds ?? 10
@@ -573,7 +586,7 @@ onUnmounted(() => {
         {{ overlayHidden ? 'Show overlay' : 'Hide overlay' }}
       </button>
       <button class="abar-btn" @click="toggleGraphView">
-        {{ graphVisible ? 'Toggle graph view' : 'Hide graph view' }}
+        {{ graphVisible ? 'Hide graph view' : 'Toggle graph view' }}
       </button>
       <button class="abar-btn" @click="pickFolder">Change Folder</button>
 
@@ -624,7 +637,7 @@ onUnmounted(() => {
         </div>
       </div>
 
-<GraphView v-show="!graphVisible" :elements="graphElements"  style="flex: 1; height: 200px; border-style: solid; border-color: #474747; border-radius: 5px;"/> 
+<GraphView v-show="graphVisible" :elements="graphElements"  style="flex: 1; height: 200px; border-style: solid; border-color: #474747; border-radius: 5px;"/> 
       
     </div>
 
