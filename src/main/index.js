@@ -109,6 +109,7 @@ ipcMain.handle('rename-clip', async (_, oldPath, newName) => {
       await fs.promises.rename(oldPath, newPath);
       return { success: true, path: newPath };
     } catch (err) {
+      console.error(err)
       if (err.code === 'EBUSY' || err.code === 'EPERM') {
         await new Promise(r => setTimeout(r, 500 * (i + 1)));
       } else {
@@ -120,19 +121,20 @@ ipcMain.handle('rename-clip', async (_, oldPath, newName) => {
 });
 
 ipcMain.handle('delete-clip', async (_, filePath) => {
-  const wait = (ms) => new Promise((r) => setTimeout(r, ms))
+  const fs = require('fs').promises
   for (let i = 0; i < 5; i++) {
     try {
-      await fs.promises.unlink(filePath)
-      return { success: true }
+      await shell.trashItem(filePath)
+      // verify deletion because trashItem is unreliable with locks
+      await fs.access(filePath) 
+      // if access succeeds, file still exists
+      await new Promise(r => setTimeout(r, 500 * (i + 1)))
     } catch (err) {
-      if (err.code === 'EBUSY' && i < 4) {
-        await wait(300 * (i + 1))
-      } else {
-        return { success: false, error: err.message }
-      }
+      // if access fails, file is gone
+      return { success: true }
     }
   }
+  return { success: false, error: 'file locked by system' }
 })
 
 ipcMain.handle('get-thumbnail', async (_, videoPath) => {

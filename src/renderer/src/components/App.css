@@ -196,6 +196,7 @@ body {
 }
 .rename-field {
   flex: 1;
+  margin-right: auto;
   background: rgba(255, 255, 255, 0.06);
   border: 0.5px solid rgba(255, 255, 255, 0.1);
   border-radius: 7px;
@@ -505,4 +506,8 @@ input::-webkit-inner-spin-button {
   justify-content: center;
   gap: 24px;
   pointer-events: all;
+}
+
+.transport-row.is-fs {
+  justify-content: space-between;
 }

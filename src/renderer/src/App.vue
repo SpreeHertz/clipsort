@@ -32,6 +32,7 @@ const isFriendsModalOpen = ref(false)
 const wasPlayingBeforeModal = ref(false)
 const friends = ref([])
 const isNodeSelected = ref(false)
+const isVideoFullScreen = ref(false)
 // cards for temporary messages
 function showAlert(message) {
   alertMessage.value = message
@@ -111,8 +112,10 @@ watch([clips, friends], ([newClips, newFriends]) => {
 function toggleFullscreen() {
   if (!document.fullscreenElement) {
     videoEl.value.parentElement.requestFullscreen()
+    isVideoFullScreen.value = true
   } else {
     document.exitFullscreen()
+    isVideoFullScreen.value = false
   }
 }
 
@@ -527,7 +530,14 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <div class="transport-row">
+        <div class="transport-row" :class="{ 'is-fs': isVideoFullScreen }">
+          <input
+        v-model="editedName"
+        v-show="isVideoFullScreen"
+        class="rename-field"
+        placeholder="rename clip…"
+        @keyup.enter="renameClip"
+      />
           <button class="tbtn" @click="prev">
             <svg width="18" height="18" viewBox="0 0 32 28" xmlns="http://www.w3.org/2000/svg">
               <path
@@ -664,7 +674,7 @@ onUnmounted(() => {
         <span class="hint"><span class="kbd">Space</span> play/pause</span>
         <span class="hint"><span class="kbd">↵</span> rename & next</span>
         <span class="hint"><span class="kbd">0</span> skip to beginning</span>
-        <span class="hint"><span class="kbd">Del</span> delete (permanent)</span>
+        <span class="hint"><span class="kbd">Del</span> delete</span>
       </div>
 
       <FriendsModal 

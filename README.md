@@ -11,10 +11,6 @@ This Electron app helps sort gaming clips quickly and effectively.
 - Skip to last `n` seconds if preferred 
 - Clean UI
 
-> [!CAUTION]
-> 1) Triggering delete on a clip does a permanent delete, NOT a move to the recycle bin (yet).
-> 2) This app hasn't been stress-tested yet. Expect bugs to creep up.
-
 ### Install
 
 ```bash
