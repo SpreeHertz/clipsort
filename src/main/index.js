@@ -182,8 +182,20 @@ ipcMain.handle('save-state', async (_, data) => {
 });
 
 // console.log('statePath:', statePath)
+let currentFfmpegProcess = null;
 
+ipcMain.handle('kill-ffmpeg', () => {
+  if (currentFfmpegProcess) {
+    currentFfmpegProcess.kill('SIGKILL');
+    currentFfmpegProcess = null;
+    return true;
+  }
+  return false;
+});
 ipcMain.handle('get-scrub-thumbnails', async (_, videoPath, duration) => {
+  if (currentFfmpegProcess) {
+    currentFfmpegProcess.kill('SIGKILL');
+  }
   const count = 10;
   const paths = [];
   const tempDir = os.tmpdir();

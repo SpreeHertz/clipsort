@@ -4,6 +4,7 @@ import './components/App.css'
 import { buildGraphData } from './graph'
 import GraphView from './components/GraphView.vue'
 import FriendsModal from './components/FriendsModal.vue'
+import { useDebounceFn, watchDebounced } from '@vueuse/core'
 
 const folder = ref(null)
 const clips = ref([])
@@ -103,10 +104,10 @@ const addFriend = (name) => {
   }
 }
 
-watch([clips, friends], ([newClips, newFriends]) => {
+watchDebounced([clips, friends], ([newClips, newFriends]) => {
   graphElements.value = buildGraphData(newClips, newFriends)
   saveState()
-}, { immediate: true, deep: true })
+}, { immediate: true, deep: true, debounce: 2000 })
 
 
 function toggleFullscreen() {
@@ -169,7 +170,7 @@ function prev() {
   if (currentIndex.value > 0) currentIndex.value--
 }
 
-watch(currentIndex, () => {
+watchDebounced(currentIndex, () => {
   playing.value = true
   editedName.value = currentClip.value
     .split('\\')
@@ -177,7 +178,7 @@ watch(currentIndex, () => {
     .replace(/\.mp4$/i, '')
   scrubThumbs.value = [] // ← clear old thumbs
   saveState()
-})
+}, { debounce: 3000 })
 
 function toggleOverlay() {
   overlayHidden.value = !overlayHidden.value
@@ -220,10 +221,10 @@ async function loadState() {
   return await window.electron.ipcRenderer.invoke('load-state')
 }
 
-watch([skipEnabled, skipSeconds], (newVals) => {
+watchDebounced([skipEnabled, skipSeconds], (newVals) => {
   console.log('skip prefs changed', newVals)
   saveState()
-})
+}, { debounce: 2500 })
 
 // Folder / clips
 
@@ -257,6 +258,7 @@ async function pickFolder() {
 async function renameClip() {
   // new name: editedName.value (full path)
   // old name: currentClip.value (full path)
+  await window.electron.ipcRenderer.invoke('kill-ffmpeg');
   const invalid = /[\\/:*?"<>|]/
   if (invalid.test(editedName.value)) {
     alert('Files cannot be renamed with this special character. Please remove it.')
@@ -305,6 +307,7 @@ async function renameClip() {
 }
 
 async function deleteClip() {
+  await window.electron.ipcRenderer.invoke('kill-ffmpeg');
   const deletedName = currentClip.value
     ?.split('\\')
     .pop()
