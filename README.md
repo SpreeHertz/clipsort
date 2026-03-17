@@ -5,11 +5,11 @@ This Electron app helps sort gaming clips quickly and effectively.
 
 ## Features
 
-- 📂 Rename and delete on-the-fly
-- ⚪ Obsidian-like graph view for viewing clips by friend names
-- 📽 Get clips recursively through folders and queue them
-- ⏩ Skip to last `n` seconds if preferred 
-- 💻 Clean UI
+- Rename and delete on-the-fly
+- Obsidian-like graph view for viewing clips by friend names
+- Get clips recursively through folders and queue them
+- Skip to last `n` seconds if preferred 
+- Clean UI
 
 
 ### Install
