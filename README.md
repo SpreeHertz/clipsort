@@ -11,6 +11,12 @@ This Electron app helps sort gaming clips quickly and effectively.
 - Skip to last `n` seconds if preferred 
 - Clean UI
 
+## Known bugs
+1. `shell.trashItem` sometimes perma deletes
+2. EBUSY still hitting
+3. On fullscreen, `.rename-field` and `buttons-group` are positioned weirdly
+4. `Exit node` button is never visible
+
 ### Install
 
 ```bash
