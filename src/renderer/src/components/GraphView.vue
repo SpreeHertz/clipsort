@@ -1,55 +1,74 @@
 <script setup>
-import { watch, ref, onMounted, onUnmounted, toRaw } from 'vue'
+import { onMounted, watch, ref } from 'vue'
 import cytoscape from 'cytoscape'
 
-const props = defineProps(['elements'])
-const graphContainer = ref(null)
+const props = defineProps({
+  elements: Array
+})
+
+const cyContainer = ref(null)
 let cy = null
 
-function updateGraph(elements) {
-  if (!graphContainer.value || !elements?.length) return
-
-  if (!cy) {
-    // first time: initialize the instance
-    cy = cytoscape({
-      container: graphContainer.value,
-      elements: toRaw(elements),
-      style: [
-        { selector: 'node.friend', style: { 'background-color': '#666', 'label': 'data(label)', 'color': '#fff' } },
-        { selector: 'node.diamond', style: { 'shape': 'diamond', 'background-color': '#4CAF50', 'label': 'data(label)', 'color': '#fff' } },
-        { selector: 'node.solo', style: { 'background-color': '#888', 'label': 'data(label)', 'color': '#fff' } },
-        { selector: 'edge', style: { 'width': 2, 'line-color': '#555' } }
+const initCy = () => {
+  cy = cytoscape({
+    container: cyContainer.value,
+    elements: props.elements,
+     style: [ // 'color' changes label color
+        { selector: 'node.friend', style: { 
+          'background-color': '#aaaab3', 
+          'label': 'data(label)', 
+          'color': '#c0c2c0' 
+        }},
+        { selector: 'node.diamond', style: {
+           'shape': 'diamond', 
+           'background-color': '#5568bd', 
+           'label': 'data(label)', 
+           'color': '#fff' 
+          }},
+        { selector: 'node.solo', 
+        style: { 'background-color': 
+        '#888', 'label': 
+        'data(label)', 
+        'color': '#fff' 
+          }},
+        { selector: 'edge', 
+        style: { 'width': 2, 
+        'line-color': '#3c3c3c' 
+          }}
       ],
       layout: { 
         name: 'cose', 
         animate: false,
-       boundingBox: { x1: 0, y1: 0, w: graphContainer.value.clientWidth, h: graphContainer.value.clientHeight },
+        boundingBox: { x1: 0, y1: 0, w: cyContainer.value.clientWidth, h: cyContainer.value.clientHeight },
+        animate: true,
+        animationDuration: 800,
+        animationEasing: 'ease-in-out-cubic',
+        fit: true,
+        padding: 30,
+        nodeRepulsion: 4000
       }
-    })
-  } else {
-    // update: replace elements without leaking memory
-    cy.json({ elements: toRaw(elements) })
-    cy.layout({ name: 'cose', animate: true }).run()
-  }
+  })
 }
 
-onMounted(() => updateGraph(props.elements))
+watch(() => props.elements, (newElems) => {
+  if (!cy) return
+  cy.json({ elements: newElems })
+  cy.layout({ name: 'cose', animate: true }).run()
+}, { deep: true })
 
-// clean up memory when component is destroyed
-onUnmounted(() => {
-  if (cy) {
-    cy.destroy()
-    cy = null
-  }
+onMounted(() => {
+  initCy()
 })
-
-watch(
-  () => props.elements,
-  (newElements) => updateGraph(newElements),
-  { deep: true }
-)
 </script>
 
 <template>
-  <div class="graph-container" ref="graphContainer" style="height: 100%; width: 100%; flex: 1;"></div>
+  <div ref="cyContainer" class="cy-container"></div>
 </template>
+
+<style scoped>
+.cy-container {
+  width: 100%;
+  height: 100%;
+  background: #050505;
+}
+</style>
