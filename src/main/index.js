@@ -192,6 +192,7 @@ ipcMain.handle('kill-ffmpeg', () => {
   }
   return false;
 });
+
 ipcMain.handle('get-scrub-thumbnails', async (_, videoPath, duration) => {
   if (currentFfmpegProcess) {
     currentFfmpegProcess.kill('SIGKILL');

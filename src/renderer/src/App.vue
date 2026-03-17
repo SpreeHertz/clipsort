@@ -4,7 +4,7 @@ import './components/App.css'
 import { buildGraphData } from './graph'
 import GraphView from './components/GraphView.vue'
 import FriendsModal from './components/FriendsModal.vue'
-import { useDebounceFn, watchDebounced } from '@vueuse/core'
+import { watchDebounced } from '@vueuse/core'
 
 const folder = ref(null)
 const clips = ref([])
@@ -281,7 +281,7 @@ async function renameClip() {
   videoMounted.value = false
   
   await nextTick()
-  await new Promise((r) => setTimeout(r, 500))
+  await new Promise((r) => setTimeout(r, 600))
   
 
   const result = await window.electron.ipcRenderer.invoke(
@@ -687,7 +687,4 @@ onUnmounted(() => {
         @add="addFriend"
         @remove="removeFriend"
         />
-
 </template>
-
-<style></style>
