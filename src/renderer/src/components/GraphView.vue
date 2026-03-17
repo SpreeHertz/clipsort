@@ -105,5 +105,7 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   background: #050505;
+  contain: strict;
+  
 }
 </style>

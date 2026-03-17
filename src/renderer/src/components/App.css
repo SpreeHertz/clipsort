@@ -333,6 +333,7 @@ input::-webkit-inner-spin-button {
 .queue-list {
   max-height: 200px;
   overflow-y: auto;
+  will-change: scroll-position;
 }
 .queue-list::-webkit-scrollbar {
   width: 3px;
@@ -508,11 +509,13 @@ input::-webkit-inner-spin-button {
   justify-content: center;
   gap: 24px;
   pointer-events: all;
+  width: 100%;
+  min-height: 20px; 
 }
 
 .transport-row.is-fs {
   justify-content: space-between;
 }
 .transport-row, .graph-container {
-  contain: paint;
+  contain: layout paint;
 }

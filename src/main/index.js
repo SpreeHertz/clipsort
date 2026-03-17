@@ -201,9 +201,6 @@ ipcMain.handle('get-scrub-thumbnails', async (_, videoPath, duration) => {
   const paths = [];
   const tempDir = os.tmpdir();
   const timestamp = Date.now();
-
-  // generate the filter string: select='eq(n,0)+eq(n,val1)+eq(n,val2)...'
-  // or use a simpler approach: fps filter
   const interval = duration / count;
 
   return new Promise((resolve) => {
