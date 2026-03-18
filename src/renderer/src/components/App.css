@@ -115,10 +115,10 @@ body {
 .canvas {
   width: 100%;
   height: auto;
-  max-height: 70vh;  /* prevent portrait videos from taking the whole screen */
+  max-height: 70vh;
   display: block;
-  object-fit: contain;
-  aspect-ratio: 16/9;
+  object-fit: contain !important;
+  aspect-ratio: 16/9 !important;
 }
 
 /* ── OVERLAY ──

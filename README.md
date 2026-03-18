@@ -15,6 +15,7 @@ This Electron app helps sort gaming clips quickly and effectively.
 1. On fullscreen, `.rename-field` and `buttons-group` are positioned weirdly
 2. Renaming toggles graph view
 3. High INP during normal usage
+4. Frozen frame does not obey `object-fit: contain` nor `aspect-ratio: 16/9`
 
 ### Install
 
@@ -40,3 +41,9 @@ $ npm run build:mac
 # For Linux
 $ npm run build:linux
 ```
+### TODO
+
+- [ ] Trimming feature
+- [ ] Search through queue
+- [ ] Scroll to queue automatically
+- [ ] Fix bugs mentioned above
