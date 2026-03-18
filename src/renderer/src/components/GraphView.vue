@@ -45,12 +45,6 @@ const initCy = () => {
         name: 'cose', 
         animate: false,
         boundingBox: { x1: 0, y1: 0, w: cyContainer.value.clientWidth, h: cyContainer.value.clientHeight },
-        animate: true,
-        animationDuration: 800,
-        animationEasing: 'ease-in-out-cubic',
-        fit: true,
-        padding: 30,
-        nodeRepulsion: 4000
       }
   })
 }
@@ -77,7 +71,7 @@ watch(() => props.elements, (newElems) => {
     } else if (node.hasClass('solo') || node.hasClass('friend')) {
       // logic for solo nodes: just use the name from the ID
       isFilterActive = true
-      friendsArray = [id] 
+      friendsArray = [id]
     }
 
     // call the updated IPC handle
