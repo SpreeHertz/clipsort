@@ -192,13 +192,13 @@ function toggleGraphView() {
 
 async function saveState() {
   if (!folder.value) return
-  console.log('saving state', {
-    folder: folder.value,
-    skipEnabled: skipEnabled.value,
-    skipSeconds: skipSeconds.value,
-    index: currentIndex.value,
-    friends: toRaw(friends.value)
-  })
+  // console.log('saving state', {
+  //   folder: folder.value,
+  //   skipEnabled: skipEnabled.value,
+  //   skipSeconds: skipSeconds.value,
+  //   index: currentIndex.value,
+  //   friends: toRaw(friends.value)
+  // })
   await window.electron.ipcRenderer.invoke(
     'save-state',
     {
@@ -222,7 +222,7 @@ async function loadState() {
 }
 
 watchDebounced([skipEnabled, skipSeconds], (newVals) => {
-  console.log('skip prefs changed', newVals)
+  // console.log('skip prefs changed', newVals)
   saveState()
 }, { debounce: 2500 })
 

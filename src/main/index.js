@@ -4,8 +4,20 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import fs from 'fs'
 import { spawn } from 'child_process'
-import ffmpeg from 'ffmpeg-static'
 import os from 'os'
+
+const getFFmpegPath = () => {
+  const ffmpegStaticPath = require('ffmpeg-static')
+  
+  if (!app.isPackaged) {
+    return ffmpegStaticPath
+  }
+
+  // in production, swap 'app.asar' for 'app.asar.unpacked'
+  return ffmpegStaticPath.replace('app.asar', 'app.asar.unpacked')
+}
+
+const ffmpegPath = getFFmpegPath()
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -153,7 +165,7 @@ ipcMain.handle('get-thumbnail', async (_, videoPath) => {
   const outPath = join(os.tmpdir(), `thumb_${Date.now()}.jpg`);
   
   return new Promise((resolve, reject) => {
-    activeQueueThumbProcess = spawn(ffmpeg, [
+    activeQueueThumbProcess = spawn(ffmpegPath, [
       '-ss', '00:00:01', 
       '-i', videoPath, 
       '-vframes', '1', 
@@ -222,7 +234,7 @@ ipcMain.handle('get-scrub-thumbnails', async (_, videoPath, duration) => {
   const outPattern = join(tempDir, `scrub_${timestamp}_%03d.jpg`);
 
   return new Promise((resolve) => {
-    activeScrubThumbProcess = spawn(ffmpeg, [
+    activeScrubThumbProcess = spawn(ffmpegPath, [
       '-i', videoPath,
       '-vf', `fps=1/${interval},scale=160:-1`, 
       outPattern

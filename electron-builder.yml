@@ -1,5 +1,5 @@
 appId: com.electron.app
-productName: clipsorter
+productName: clipsort
 directories:
   buildResources: build
 files:
@@ -10,8 +10,9 @@ files:
   - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
 asarUnpack:
   - resources/**
+  - "**/node_modules/ffmpeg-static/**"
 win:
-  executableName: clipsorter
+  executableName: clipsort
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
