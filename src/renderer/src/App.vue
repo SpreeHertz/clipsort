@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, shallowRef, nextTick, onMounted, onUnmounted, toRaw } from 'vue'
+import { ref, computed, shallowRef, nextTick, onMounted, onUnmounted, toRaw, provide } from 'vue'
 import './components/App.css'
 import { buildGraphData } from './graph'
 import GraphView from './components/GraphView.vue'
@@ -34,6 +34,9 @@ const wasPlayingBeforeModal = ref(false)
 const friends = ref([])
 const isNodeSelected = ref(false)
 const isVideoFullScreen = ref(false)
+const isRenaming = ref(false)
+provide('isRenaming', isRenaming)
+
 // cards for temporary messages
 function showAlert(message) {
   alertMessage.value = message
@@ -107,7 +110,7 @@ const addFriend = (name) => {
 watchDebounced([clips, friends], ([newClips, newFriends]) => {
   graphElements.value = buildGraphData(newClips, newFriends)
   saveState()
-}, { immediate: true, deep: true, debounce: 2000 })
+}, { deep: true, debounce: 10000 })
 
 
 function toggleFullscreen() {
@@ -254,15 +257,19 @@ async function pickFolder() {
 }
 
 //  Rename / Delete
-
+const inputEl = document.querySelector('.rename-field')
+if (inputEl) inputEl.disabled = true;
 async function renameClip() {
   // new name: editedName.value (full path)
   // old name: currentClip.value (full path)
-  await window.electron.ipcRenderer.invoke('kill-ffmpeg');
-  const invalid = /[\\/:*?"<>|]/
-  if (invalid.test(editedName.value)) {
-    alert('Files cannot be renamed with this special character. Please remove it.')
-    return
+  if (isRenaming.value) return
+  isRenaming.value = true
+  try {
+      await window.electron.ipcRenderer.invoke('kill-ffmpeg');
+      const invalid = /[\\/:*?"<>|]/
+        if (invalid.test(editedName.value)) {
+            showAlert('Files cannot be renamed with this special character. Please remove it.')
+            return
   }
   const oldName = currentClip.value.split('\\').pop().replace(/\.mp4$/i, '')
   const newName = editedName.value.split('\\').pop().replace(/\.mp4$/i, '')
@@ -275,9 +282,10 @@ async function renameClip() {
     videoEl.value.pause()
     videoEl.value.removeAttribute('src')
     videoEl.value.load()
+    videoEl.value.remove();
   }
 
-  const inputEl = document.querySelector('.rename-field')
+  
   videoMounted.value = false
   
   await nextTick()
@@ -291,7 +299,7 @@ async function renameClip() {
   )
 
   if (!result.success) {
-    alert('Could not rename. Try again.')
+    showAlert('Could not rename. Try again.')
     videoMounted.value = true
     return
   }
@@ -304,6 +312,12 @@ async function renameClip() {
   
   inputEl?.focus()
   next()
+  } finally {
+    isRenaming.value = false // always re-enable, even on error
+    await nextTick()
+    inputEl?.focus()
+  }
+  
 }
 
 async function deleteClip() {
@@ -324,7 +338,7 @@ async function deleteClip() {
   const result = await window.electron.ipcRenderer.invoke('delete-clip', currentClip.value)
 
   if (!result.success) {
-    alert(
+    showAlert(
       'Could not delete — file still in use. Try again (Maybe try skipping to the last second then delete?)'
     )
     videoMounted.value = true
@@ -535,7 +549,7 @@ onUnmounted(() => {
 
         <div class="transport-row" :class="{ 'is-fs': isVideoFullScreen }">
           <input
-        v-model="editedName"
+        v-model.lazy="editedName"
         v-show="isVideoFullScreen"
         class="rename-field"
         placeholder="rename clip…"

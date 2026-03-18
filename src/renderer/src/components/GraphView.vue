@@ -1,11 +1,12 @@
 <script setup>
-import { onMounted, watch, ref } from 'vue'
+import { onMounted, watch, ref, inject } from 'vue'
 import cytoscape from 'cytoscape'
 
 const props = defineProps({
   elements: Array,
   currentFolder: String
 })
+const isRenaming = inject('isRenaming')
 
 const emit = defineEmits(['update-clips', 'show-exit-node-btn'])
 
@@ -55,9 +56,9 @@ const initCy = () => {
 }
 
 watch(() => props.elements, (newElems) => {
-  if (!cy) return
+  if (!cy || isRenaming.value) return
   cy.json({ elements: newElems })
-  cy.layout({ name: 'cose', animate: true }).run()
+  cy.layout({ name: 'cose', animate: false, fit: true }).run()
   
   // fix: remove existing listeners to prevent duplicates
   cy.off('tap', 'node.friend, node.diamond, node.solo')
@@ -97,7 +98,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div ref="cyContainer" class="cy-container"></div>
+  <div ref="cyContainer" class="cy-container" v-show="!isRenaming"></div>
 </template>
 
 <style scoped>
