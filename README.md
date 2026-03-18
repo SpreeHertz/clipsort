@@ -16,7 +16,6 @@ This Electron app helps sort gaming clips quickly and effectively.
 2. Renaming toggles graph view
 3. High INP during normal usage
 4. Frozen frame does not obey `object-fit: contain` nor `aspect-ratio: 16/9`
-
 ### Install
 
 ```bash
@@ -46,4 +45,5 @@ $ npm run build:linux
 - [ ] Trimming feature
 - [ ] Search through queue
 - [ ] Scroll to queue automatically
+- [ ] Make queue div and graph container movable
 - [ ] Fix bugs mentioned above
