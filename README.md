@@ -11,10 +11,10 @@ This Electron app helps sort gaming clips quickly and effectively.
 - Skip to last `n` seconds if preferred 
 - Clean UI
 
-## Known bugs
-1. `shell.trashItem` sometimes perma deletes
-2. EBUSY still hitting
-3. On fullscreen, `.rename-field` and `buttons-group` are positioned weirdly
+## Known bugs & performance concerns
+1. On fullscreen, `.rename-field` and `buttons-group` are positioned weirdly
+2. Renaming toggles graph view
+3. High INP during normal usage
 
 ### Install
 

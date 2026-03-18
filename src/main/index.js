@@ -1,5 +1,5 @@
 import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
-import { join, dirname } from 'path'
+import { join, dirname, resolve } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import fs from 'fs'
@@ -146,12 +146,13 @@ ipcMain.handle('delete-clip', async (_, filePath) => {
   const fs = require('fs').promises
   for (let i = 0; i < 5; i++) {
     try {
-      await shell.trashItem(filePath)
+      await shell.trashItem(path.resolve(filePath))
       // verify deletion because trashItem is unreliable with locks
       await fs.access(filePath) 
       // if access succeeds, file still exists
       await new Promise(r => setTimeout(r, 500 * (i + 1)))
     } catch (err) {
+      console.log(err)
       // if access fails, file is gone
       return { success: true }
     }
