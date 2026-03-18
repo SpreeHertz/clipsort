@@ -20,7 +20,7 @@ const playing = ref(true)
 const currentTime = ref('0:00')
 const totalDuration = ref('0:00')
 const currentClip = computed(() => clips.value[currentIndex.value])
-const scrubThumbs = ref([]) // [{ time, path }]
+const scrubThumbs = shallowRef([]) // [{ time, path }]
 const hoverTime = ref(null)
 const hoverX = ref(0)
 const hoverThumb = ref(null)
@@ -344,7 +344,7 @@ async function deleteClip() {
     videoMounted.value = true
     return
   }
-
+  // replaces 1 element at currentIndex to the left
   clips.value.splice(currentIndex.value, 1)
 
   if (clips.value.length === 0) {
