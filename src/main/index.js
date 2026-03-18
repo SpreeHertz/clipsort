@@ -3,7 +3,7 @@ import { join, dirname } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import fs from 'fs'
-import { execFile } from 'child_process'
+import { spawn } from 'child_process'
 import ffmpeg from 'ffmpeg-static'
 import os from 'os'
 
@@ -92,6 +92,16 @@ function getClipsRecursively(dir, checkForFriends = false, friendsList = []) {
   return results
 }
 
+let activeQueueThumbProcess = null;
+let activeScrubThumbProcess = null;
+
+// Helper to kill processes safely
+const killProcess = (proc) => {
+  if (proc) {
+    proc.kill('SIGKILL');
+  }
+};
+
 ipcMain.handle('get-clips', async (_, folderPath, checkForFriends = false, friendsList = []) => {
   const list = Array.isArray(friendsList) ? friendsList : []
   return getClipsRecursively(folderPath, checkForFriends, list)
@@ -138,23 +148,31 @@ ipcMain.handle('delete-clip', async (_, filePath) => {
 })
 
 ipcMain.handle('get-thumbnail', async (_, videoPath) => {
-  if (!fs.existsSync(videoPath)) {
-    console.error("thumbnail failed: file does not exist", videoPath);
-    return null;
-  }
-  const outPath = join(os.tmpdir(), `thumb_${Date.now()}.jpg`)
-  return new Promise((resolve, reject) => {
-    execFile(
-      ffmpeg,
-      ['-i', videoPath, '-ss', '00:00:01', '-vframes', '1', '-vf', 'scale=160:-1', outPath],
-      (err) => {
-        if (err) reject(err)
-        else resolve(outPath)
-      }
-    )
-  })
-})
+  killProcess(activeQueueThumbProcess); // Kill pending thumb request
 
+  const outPath = join(os.tmpdir(), `thumb_${Date.now()}.jpg`);
+  
+  return new Promise((resolve, reject) => {
+    activeQueueThumbProcess = spawn(ffmpeg, [
+      '-ss', '00:00:01', 
+      '-i', videoPath, 
+      '-vframes', '1', 
+      '-vf', 'scale=160:-1', 
+      outPath
+    ]);
+
+    activeQueueThumbProcess.on('close', (code) => {
+      activeQueueThumbProcess = null;
+      if (code === 0) resolve(outPath);
+      else reject(new Error('ffmpeg failed'));
+    });
+
+    activeQueueThumbProcess.on('error', (err) => {
+      activeQueueThumbProcess = null;
+      reject(err);
+    });
+  });
+});
 // State (single source of truth, replaces localStorage)
 
 const statePath = join(app.getPath('userData'), 'state.json')
@@ -194,42 +212,37 @@ ipcMain.handle('kill-ffmpeg', () => {
 });
 
 ipcMain.handle('get-scrub-thumbnails', async (_, videoPath, duration) => {
-  if (currentFfmpegProcess) {
-    currentFfmpegProcess.kill('SIGKILL');
-  }
+  killProcess(activeScrubThumbProcess);
+
   const count = 10;
   const paths = [];
   const tempDir = os.tmpdir();
   const timestamp = Date.now();
   const interval = duration / count;
+  const outPattern = join(tempDir, `scrub_${timestamp}_%03d.jpg`);
 
   return new Promise((resolve) => {
-    // we use %03d to output multiple files (scrub_123_001.jpg, scrub_123_002.jpg, etc.)
-    const outPattern = join(tempDir, `scrub_${timestamp}_%03d.jpg`);
-    
-    execFile(
-      ffmpeg,
-      [
-        '-i', videoPath,
-        '-vf', `fps=1/${interval},scale=160:-1`, 
-        outPattern
-      ],
-      (err) => {
-        if (err) {
-          console.error(err);
-          return resolve([]);
-        }
+    activeScrubThumbProcess = spawn(ffmpeg, [
+      '-i', videoPath,
+      '-vf', `fps=1/${interval},scale=160:-1`, 
+      outPattern
+    ]);
 
-        // read the generated files back into the array
-        for (let i = 1; i <= count + 1; i++) {
-          const fileName = `scrub_${timestamp}_${String(i).padStart(3, '0')}.jpg`;
+    activeScrubThumbProcess.on('close', (code) => {
+      activeScrubThumbProcess = null;
+      if (code !== 0) return resolve([]);
+
+      for (let i = 1; i <= count + 1; i++) {
+        const fileName = `scrub_${timestamp}_${String(i).padStart(3, '0')}.jpg`;
+        const fullPath = join(tempDir, fileName);
+        if (fs.existsSync(fullPath)) {
           paths.push({ 
             time: (i - 1) * interval, 
-            path: join(tempDir, fileName) 
+            path: fullPath 
           });
         }
-        resolve(paths);
       }
-    );
+      resolve(paths);
+    });
   });
 });

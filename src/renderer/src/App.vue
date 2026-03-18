@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, nextTick, onMounted, onUnmounted, toRaw } from 'vue'
+import { ref, computed, shallowRef, nextTick, onMounted, onUnmounted, toRaw } from 'vue'
 import './components/App.css'
 import { buildGraphData } from './graph'
 import GraphView from './components/GraphView.vue'
@@ -14,7 +14,7 @@ const skipEnabled = ref(false)
 const skipSeconds = ref(10)
 const videoMounted = ref(true)
 const editedName = ref('')
-const thumbnails = ref({})
+const thumbnails = shallowRef({})
 const progressFill = ref(null)
 const playing = ref(true)
 const currentTime = ref('0:00')

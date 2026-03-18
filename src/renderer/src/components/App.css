@@ -369,6 +369,7 @@ input::-webkit-inner-spin-button {
   border-radius: 4px;
   flex-shrink: 0;
   display: flex;
+  aspect-ratio: 16/9; /* may help with performance */
   align-items: center;
   justify-content: center;
   overflow: hidden;
