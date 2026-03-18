@@ -28,7 +28,7 @@ const overlayHidden = ref(false)
 const alertMessage = ref('')
 const frozenFrame = ref(null)
 const graphElements = ref([])
-const graphVisible = ref(true)
+const graphVisible = ref(false)
 const isFriendsModalOpen = ref(false)
 const wasPlayingBeforeModal = ref(false)
 const friends = ref([])
@@ -126,6 +126,7 @@ function toggleFullscreen() {
 function handleVideoLoaded() {
   totalDuration.value = formatTime(videoEl.value.duration)
   loadScrubThumbs()
+  frozenFrame.value = null
   if (!skipEnabled.value) return
   const target = videoEl.value.duration - skipSeconds.value
   if (target > 0) videoEl.value.currentTime = target
@@ -163,14 +164,20 @@ function seek(e) {
 // Navigation
 
 function next() {
-  if (currentIndex.value < clips.value.length - 1) currentIndex.value++
+  if (currentIndex.value < clips.value.length - 1) {
+    createFrozenFrame()
+    currentIndex.value++
+  }
   if (currentIndex.value === clips.value.length) {
     showAlert('Reached end of queue.')
   }
 }
 
 function prev() {
-  if (currentIndex.value > 0) currentIndex.value--
+  if (currentIndex.value > 0) {
+      createFrozenFrame()
+    currentIndex.value--
+  }
 }
 
 watchDebounced(currentIndex, () => {
@@ -264,6 +271,7 @@ async function renameClip() {
   // old name: currentClip.value (full path)
   if (isRenaming.value) return
   isRenaming.value = true
+  await createFrozenFrame()
   try {
       await window.electron.ipcRenderer.invoke('kill-ffmpeg');
       const invalid = /[\\/:*?"<>|]/
@@ -320,17 +328,24 @@ async function renameClip() {
   
 }
 
+async function createFrozenFrame() {
+  const canvas = document.createElement('canvas')
+  canvas.width = videoEl.value.videoWidth
+  canvas.height = videoEl.value.videoHeight
+  canvas.getContext('2d').drawImage(videoEl.value, 0, 0)
+  frozenFrame.value = canvas.toDataURL('image/jpeg', 0.7)
+  
+  // force vue to render the <img> tag before we continue
+  await nextTick()
+}
+
 async function deleteClip() {
   await window.electron.ipcRenderer.invoke('kill-ffmpeg');
   const deletedName = currentClip.value
     ?.split('\\')
     .pop()
     .replace(/\.mp4$/i, '')
-  const canvas = document.createElement('canvas')
-  canvas.width = videoEl.value.videoWidth
-  canvas.height = videoEl.value.videoHeight
-  canvas.getContext('2d').drawImage(videoEl.value, 0, 0)
-  frozenFrame.value = canvas.toDataURL()
+  createFrozenFrame()
   videoMounted.value = false
   await nextTick()
   await new Promise((r) => setTimeout(r, 500))

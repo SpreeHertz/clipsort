@@ -92,6 +92,7 @@ body {
   position: relative;
   width: 100%;
   background: #000;
+  content-visibility: auto;
 }
 .video-wrap:fullscreen .video-el {
   width: 100vw !important;
@@ -106,7 +107,20 @@ body {
   max-height: 70vh;  /* prevent portrait videos from taking the whole screen */
   display: block;
   object-fit: contain;
+  contain: layout paint style;
+  aspect-ratio: 16/9;
+  background: #000;
 }
+
+.canvas {
+  width: 100%;
+  height: auto;
+  max-height: 70vh;  /* prevent portrait videos from taking the whole screen */
+  display: block;
+  object-fit: contain;
+  aspect-ratio: 16/9;
+}
+
 /* ── OVERLAY ──
    z-index 5: above video, below transport (10) and progress bar (20)
    bottom padding 56px: clears the transport row height              */
@@ -150,6 +164,8 @@ body {
   font-size: 11px;
   font-weight: 300;
   color: rgba(255, 255, 255, 0.75);
+  will-change: transform;
+  transform: translateZ(0);
   font-variant-numeric: tabular-nums;
 }
 
@@ -462,6 +478,8 @@ input::-webkit-inner-spin-button {
   cursor: pointer;
   border-radius: 9px;
   transition: height 0.15s;
+  will-change: transform;
+  transform: translateZ(0);
 }
 .progress-bar:hover {
   height: 8px;
