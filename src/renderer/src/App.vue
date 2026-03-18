@@ -541,6 +541,7 @@ onUnmounted(() => {
         placeholder="rename clip…"
         @keyup.enter="renameClip"
       />
+      <div class="divider" />
       <div class="button-group">
           <button class="tbtn" @click="prev">
             <svg width="18" height="18" viewBox="0 0 32 28" xmlns="http://www.w3.org/2000/svg">
@@ -587,6 +588,7 @@ onUnmounted(() => {
         placeholder="rename clip…"
         @keyup.enter="renameClip"
       />
+      <div class="action-buttons-group">
       <button class="abar-btn" @click="renameClip">Rename</button>
       <div class="divider" />
       <button class="abar-btn del" @click="deleteClip">Delete</button>
@@ -599,7 +601,7 @@ onUnmounted(() => {
           <div class="toggle-knob" />
         </div>
       </div>
-        <button class="abar-btn" v-show="isNodeSelected">Exit node</button>
+      <button class="abar-btn" v-if="isNodeSelected" @click="initClips(folder); isNodeSelected=false">Exit node</button>
       <button class="abar-btn" @click="toggleFriendsModal(true)">Define friends</button>
       <button class="abar-btn" @click="toggleOverlay">
         {{ overlayHidden ? 'Show overlay' : 'Hide overlay' }}
@@ -608,7 +610,7 @@ onUnmounted(() => {
         {{ graphVisible ? 'Hide graph view' : 'Toggle graph view' }}
       </button>
       <button class="abar-btn" @click="pickFolder">Change Folder</button>
-
+      </div>
       <div class="divider" />
     </div>
 
@@ -660,6 +662,7 @@ onUnmounted(() => {
         v-show="graphVisible" 
         :elements="graphElements"
         :current-folder="folder"
+        @show-exit-node-btn="isNodeSelected=true"
         @update-clips="(newList) => { 
             clips = newList; 
             currentIndex = 0; 

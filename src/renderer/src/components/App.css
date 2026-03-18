@@ -192,12 +192,12 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
+  justify-content: space-between;
   flex-shrink: 0;
 }
 .rename-field {
-  width: 300px; 
-  min-width: 300px;
-  margin-right: auto;
+  width: 270px; 
+  min-width: 250px;
   background: rgba(255, 255, 255, 0.06);
   border: 0.5px solid rgba(255, 255, 255, 0.1);
   border-radius: 7px;
@@ -256,7 +256,7 @@ input::-webkit-inner-spin-button {
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
-  margin-left: 4px;
+  margin-left: 2px;
 }
 .skip-label {
   font-size: 11px;
@@ -268,7 +268,7 @@ input::-webkit-inner-spin-button {
   background: rgba(255, 255, 255, 0.06);
   border: 0.5px solid rgba(255, 255, 255, 0.1);
   border-radius: 5px;
-  padding: 4px 6px;
+  padding: 4px 3px;
   font-size: 12px;
   color: #fff;
   outline: none;
@@ -530,7 +530,17 @@ input::-webkit-inner-spin-button {
   margin: 0 auto; 
 }
 
+.action-buttons-group {
+  display: flex;
+  align-items: center;
+  gap: 10px; 
+}
+
 .rename-field.fs-style {
+  width: 250px;
+  margin-right: 0; /* Let flex handle the gap */
+}
+.rename-field.exit-node-invisible {
   width: 250px;
   margin-right: 0; /* Let flex handle the gap */
 }
