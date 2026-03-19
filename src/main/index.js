@@ -32,6 +32,10 @@ function createWindow() {
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
+       /* 
+      * webSecurity is disabled on purpose. I couldn't implement a custom protocol without bugs creeping in.
+      * As this app does not access the internet for any functionality, we can say it is safe to keep it false.
+      */
       webSecurity: false
     }
   })
