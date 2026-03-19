@@ -165,7 +165,7 @@ function seek(e) {
 
 // Navigation
 
-function next() {
+function next(skipFrozenFrame=false) {
   if (currentIndex.value < clips.value.length - 1) {
     createFrozenFrame()
     currentIndex.value++
@@ -183,6 +183,7 @@ function prev() {
 }
 
 watchDebounced(currentIndex, () => {
+  if (isRenaming.value) return
   playing.value = true
   editedName.value = currentClip.value
     .split('\\')
@@ -291,7 +292,7 @@ async function renameClip() {
     videoEl.value.pause()
     videoEl.value.removeAttribute('src')
     videoEl.value.load()
-    videoEl.value.remove();
+    // videoEl.value.remove(); breaks things in prod because vue is confused?
   }
 
   
@@ -300,7 +301,7 @@ async function renameClip() {
   await nextTick()
   await new Promise((r) => setTimeout(r, 600))
   
-
+  console.log('renaming:', currentClip.value, '→', editedName.value)
   const result = await window.electron.ipcRenderer.invoke(
     'rename-clip',
     currentClip.value,
@@ -320,7 +321,7 @@ async function renameClip() {
   await nextTick() 
   
   isVideoFullScreen.value ? fsRenameEl.value?.focus() : actionRenameEl.value?.focus()
-  next()
+  next(true)
   } finally {
     isRenaming.value = false // always re-enable, even on error
     await nextTick()
@@ -330,6 +331,7 @@ async function renameClip() {
 }
 
 async function createFrozenFrame() {
+  if (!videoEl.value) return
   const canvas = document.createElement('canvas')
   canvas.width = videoEl.value.videoWidth
   canvas.height = videoEl.value.videoHeight

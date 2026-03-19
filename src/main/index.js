@@ -39,6 +39,7 @@ function createWindow() {
   mainWindow.on('ready-to-show', () => {
     mainWindow.maximize()
     mainWindow.show()
+    // mainWindow.webContents.openDevTools() uncomment when things break in prod
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -123,13 +124,13 @@ ipcMain.handle('get-clips', async (_, folderPath, checkForFriends = false, frien
 ipcMain.handle('rename-clip', async (_, oldPath, newName) => {
   if (!newName?.trim()) return { success: false, path: oldPath };
 
-  const dir = dirname(oldPath);
+  const dir = dirname(path.resolve(oldPath));
   const ext = oldPath.toLowerCase().endsWith('.mp4') ? '.mp4' : '.mp4'; // normalize
   const newPath = join(dir, newName.trim() + ext);
 
   for (let i = 0; i < 5; i++) {
     try {
-      await fs.promises.rename(oldPath, newPath);
+      await fs.promises.rename(path.resolve(oldPath), path.resolve(newPath));
       return { success: true, path: newPath };
     } catch (err) {
       console.error(err)
