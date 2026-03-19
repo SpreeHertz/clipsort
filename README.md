@@ -11,6 +11,8 @@ This Electron app helps sort gaming clips quickly and effectively.
 - Skip to last `n` seconds if preferred 
 - Clean UI
 
+Note: Claude helped a lot with the code.
+
 ### Install
 
 ```bash
