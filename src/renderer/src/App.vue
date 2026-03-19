@@ -28,13 +28,15 @@ const overlayHidden = ref(false)
 const alertMessage = ref('')
 const frozenFrame = ref(null)
 const graphElements = ref([])
-const graphVisible = ref(false)
+const graphVisible = ref(true)
 const isFriendsModalOpen = ref(false)
 const wasPlayingBeforeModal = ref(false)
 const friends = ref([])
 const isNodeSelected = ref(false)
 const isVideoFullScreen = ref(false)
 const isRenaming = ref(false)
+const fsInputEl = ref(null)
+const actionRenameEl = ref(null)
 provide('isRenaming', isRenaming)
 
 // cards for temporary messages
@@ -112,8 +114,8 @@ watchDebounced([clips, friends], ([newClips, newFriends]) => {
   saveState()
 }, { deep: true, debounce: 3000 })
 
-
 function toggleFullscreen() {
+  
   if (!document.fullscreenElement) {
     videoEl.value.parentElement.requestFullscreen()
     isVideoFullScreen.value = true
@@ -264,8 +266,7 @@ async function pickFolder() {
 }
 
 //  Rename / Delete
-const inputEl = document.querySelector('.rename-field')
-if (inputEl) inputEl.disabled = true;
+
 async function renameClip() {
   // new name: editedName.value (full path)
   // old name: currentClip.value (full path)
@@ -318,12 +319,12 @@ async function renameClip() {
   videoMounted.value = true
   await nextTick() 
   
-  inputEl?.focus()
+  isVideoFullScreen.value ? fsRenameEl.value?.focus() : actionRenameEl.value?.focus()
   next()
   } finally {
     isRenaming.value = false // always re-enable, even on error
     await nextTick()
-    inputEl?.focus()
+    isVideoFullScreen.value ? fsRenameEl.value?.focus() : actionRenameEl.value?.focus()
   }
   
 }
@@ -513,7 +514,7 @@ onUnmounted(() => {
 
   <!-- PLAYER -->
   <div v-else class="root">
-    <div class="video-wrap">
+    <div class="video-wrap" :class="{ 'is-fs': isVideoFullScreen }">
       <div v-if="alertMessage" class="alert-card">{{ alertMessage }}</div>
       <video
         v-if="videoMounted"
@@ -572,13 +573,15 @@ onUnmounted(() => {
         <div class="transport-row" :class="{ 'is-fs': isVideoFullScreen }">
           <input
         v-model.lazy="editedName"
+        ref="fsInputEl"
         v-show="isVideoFullScreen"
         class="rename-field"
+      :class="{ 'is-fs': isVideoFullScreen }"
         placeholder="rename clip…"
         @keyup.enter="renameClip"
       />
-      <div class="divider" />
-      <div class="button-group">
+      <div class="divider" v-if="!isVideoFullScreen"/>
+      <div class="button-group" :class="{ 'is-fs': isVideoFullScreen }">
           <button class="tbtn" @click="prev">
             <svg width="18" height="18" viewBox="0 0 32 28" xmlns="http://www.w3.org/2000/svg">
               <path
@@ -623,6 +626,7 @@ onUnmounted(() => {
         class="rename-field"
         placeholder="rename clip…"
         @keyup.enter="renameClip"
+
       />
       <div class="action-buttons-group">
       <button class="abar-btn" @click="renameClip">Rename</button>
