@@ -110,7 +110,7 @@ const addFriend = (name) => {
 watchDebounced([clips, friends], ([newClips, newFriends]) => {
   graphElements.value = buildGraphData(newClips, newFriends)
   saveState()
-}, { deep: true, debounce: 10000 })
+}, { deep: true, debounce: 3000 })
 
 
 function toggleFullscreen() {
@@ -400,19 +400,26 @@ async function processThumbQueue() {
   thumbWorking = false
 }
 
+const sharedObserver = new IntersectionObserver(
+  (entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const clip = entry.target._clip // or dataset
+        if (clip && !thumbnails.value[clip] && !thumbQueue.includes(clip)) {
+          thumbQueue.push(clip)
+          processThumbQueue()
+        }
+        sharedObserver.unobserve(entry.target)
+      }
+    })
+  },
+  { threshold: 0.1 }
+)
+
 function queueThumb(clip, el) {
   if (!el || thumbnails.value[clip] || thumbQueue.includes(clip)) return
-  const observer = new IntersectionObserver(
-    ([entry]) => {
-      if (entry.isIntersecting) {
-        thumbQueue.push(clip)
-        processThumbQueue()
-        observer.disconnect()
-      }
-    },
-    { threshold: 0.1 }
-  )
-  observer.observe(el)
+  el._clip = clip // attach clip reference to element
+  sharedObserver.observe(el)
 }
 
 // Keyboard
