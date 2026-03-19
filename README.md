@@ -41,4 +41,3 @@ $ npm run build:linux
 - [ ] Search through queue
 - [ ] Scroll to queue automatically
 - [ ] Make queue div and graph container movable
-- [ ] Fix bugs mentioned above
