@@ -94,13 +94,22 @@ body {
   background: #000;
   content-visibility: auto;
 }
-.video-wrap:fullscreen .video-el {
+.video-wrap.is-fs .video-el {
   width: 100vw !important;
   height: 100vh !important;
   max-width: none !important;
   max-height: none !important;
   object-fit: contain; 
 }
+
+.video-wrap.is-fs .controls-row {
+    bottom: 20px;
+}
+
+.video-wrap.is-fs .overlay {
+  padding-bottom: 90px !important;
+}
+
 .video-el {
   width: 100%;
   height: auto;
@@ -222,8 +231,13 @@ body {
   color: #fff;
   outline: none;
   transition: border-color 0.15s;
-  contain: layout paint;
 }
+
+.rename-field.is-fs {
+ background: rgba(255, 255, 255, 0.1);
+  padding: 10px 14px;
+}
+
 .rename-field::placeholder {
   color: rgba(255, 255, 255, 0.2);
 }
@@ -532,16 +546,31 @@ input::-webkit-inner-spin-button {
   min-height: 20px; 
 }
 
+
 .transport-row.is-fs {
   display: flex;
-  justify-content: center;
   align-items: center;
-  width: 100%;
+  justify-content: center;
+  position: relative;
+  gap: 0;
 }
 
-.transport-row, .graph-container {
-  contain: layout paint;
+.transport-row.is-fs .divider {
+  display: none; /* divider is in flow and offsetting the center */
 }
+
+.transport-row.is-fs .rename-field {
+  position: absolute;
+  left: 20px;
+  width: 270px;
+}
+
+
+.transport-row.is-fs .button-group.is-fs {
+  margin-top: 2px;
+  margin: 0;
+}
+
 .button-group {
   display: flex;
   align-items: center;
@@ -549,16 +578,14 @@ input::-webkit-inner-spin-button {
   margin: 0 auto; 
 }
 
+
+
 .action-buttons-group {
   display: flex;
   align-items: center;
   gap: 10px; 
 }
 
-.rename-field.fs-style {
-  width: 250px;
-  margin-right: 0; /* Let flex handle the gap */
-}
 .rename-field.exit-node-invisible {
   width: 250px;
   margin-right: 0; /* Let flex handle the gap */
