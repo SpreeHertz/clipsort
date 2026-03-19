@@ -110,6 +110,8 @@ body {
   padding-bottom: 90px !important;
 }
 
+/* contain: layout paint — isolates repaint to this element only.
+   DO NOT add to elements that need to participate in parent layout flow */
 .video-el {
   width: 100%;
   height: auto;
