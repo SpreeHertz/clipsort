@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, shallowRef, nextTick, onMounted, onUnmounted, toRaw, provide } from 'vue'
+import { ref, computed, shallowRef, nextTick, onMounted, onUnmounted, toRaw, provide, watch } from 'vue'
 import './components/App.css'
 import { buildGraphData } from './graph'
 import GraphView from './components/GraphView.vue'
@@ -36,15 +36,18 @@ const isNodeSelected = ref(false)
 const isVideoFullScreen = ref(false)
 const isRenaming = ref(false)
 const fsInputEl = ref(null)
+const fsRenameEl = ref(null)
 const actionRenameEl = ref(null)
+const activeQueueItem = ref(null)
+const queueListEl = ref(null)
 provide('isRenaming', isRenaming)
 
 // cards for temporary messages
-function showAlert(message) {
+function showAlert(message, timer=3500) {
   alertMessage.value = message
   setTimeout(() => {
     alertMessage.value = ''
-  }, 3500)
+  }, timer)
 }
 
 // Playback
@@ -170,8 +173,8 @@ function next(skipFrozenFrame=false) {
     createFrozenFrame()
     currentIndex.value++
   }
-  if (currentIndex.value === clips.value.length) {
-    showAlert('Reached end of queue.')
+  if (currentIndex.value === clips.value.length - 1) {
+    showAlert('Reached end of queue.', 7000)
   }
 }
 
@@ -182,7 +185,8 @@ function prev() {
   }
 }
 
-watchDebounced(currentIndex, () => {
+watch(currentIndex, async () => {
+  // handle renaming
   if (isRenaming.value) return
   playing.value = true
   editedName.value = currentClip.value
@@ -190,8 +194,11 @@ watchDebounced(currentIndex, () => {
     .pop()
     .replace(/\.mp4$/i, '')
   scrubThumbs.value = [] // ← clear old thumbs
+})
+
+watchDebounced(currentIndex, () => {
   saveState()
-}, { debounce: 3000 })
+}, { debounce: 3500 })
 
 function toggleOverlay() {
   overlayHidden.value = !overlayHidden.value
@@ -669,6 +676,7 @@ onUnmounted(() => {
             :key="clip"
             class="queue-item"
             :class="{ now: i === currentIndex }"
+            :ref="(el) => { if (i === currentIndex) activeQueueItem = el }"
             @click="currentIndex = i"
           >
             <div :ref="(el) => el && queueThumb(clip, el)" class="q-thumb">
@@ -706,7 +714,7 @@ onUnmounted(() => {
         :current-folder="folder"
         @show-exit-node-btn="isNodeSelected=true"
         @update-clips="(newList) => { 
-            clips = newList; 
+            clips = newList.value; 
             currentIndex = 0; 
           }"
         style="flex: 1; 

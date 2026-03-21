@@ -129,7 +129,7 @@ ipcMain.handle('rename-clip', async (_, oldPath, newName) => {
   if (!newName?.trim()) return { success: false, path: oldPath };
 
   const dir = dirname(path.resolve(oldPath));
-  const ext = oldPath.toLowerCase().endsWith('.mp4') ? '.mp4' : '.mp4'; // normalize
+  const ext = oldPath.toLowerCase().endsWith('.mp4')
   const newPath = join(dir, newName.trim() + ext);
 
   for (let i = 0; i < 5; i++) {
@@ -149,7 +149,6 @@ ipcMain.handle('rename-clip', async (_, oldPath, newName) => {
 });
 
 ipcMain.handle('delete-clip', async (_, filePath) => {
-  const fs = require('fs').promises
   for (let i = 0; i < 5; i++) {
     try {
       await shell.trashItem(path.resolve(filePath))
@@ -167,7 +166,6 @@ ipcMain.handle('delete-clip', async (_, filePath) => {
 })
 
 ipcMain.handle('get-thumbnail', async (_, videoPath) => {
-  killProcess(activeQueueThumbProcess); // Kill pending thumb request
 
   const outPath = join(os.tmpdir(), `thumb_${Date.now()}.jpg`);
   
