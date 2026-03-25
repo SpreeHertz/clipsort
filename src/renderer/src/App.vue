@@ -5,6 +5,7 @@ import { buildGraphData } from './graph'
 import GraphView from './components/GraphView.vue'
 import FriendsModal from './components/FriendsModal.vue'
 import { watchDebounced } from '@vueuse/core'
+import CheckIcon from './components/icons/CheckIcon.vue'
 
 const folder = ref(null)
 const clips = ref([])
@@ -35,11 +36,10 @@ const friends = ref([])
 const isNodeSelected = ref(false)
 const isVideoFullScreen = ref(false)
 const isRenaming = ref(false)
-const fsInputEl = ref(null)
 const fsRenameEl = ref(null)
 const actionRenameEl = ref(null)
 const activeQueueItem = ref(null)
-const queueListEl = ref(null)
+const isPreferencesButtonOpen = ref(false)
 provide('isRenaming', isRenaming)
 
 // cards for temporary messages
@@ -83,8 +83,6 @@ function updateProgress() {
 async function loadScrubThumbs() {
   scrubThumbs.value = []
   
-  // 1. check if element exists
-  // 2. check if duration is a valid number and > 0
   if (!videoEl.value || isNaN(videoEl.value.duration) || videoEl.value.duration <= 0) {
     return
   }
@@ -115,7 +113,7 @@ const addFriend = (name) => {
 watchDebounced([clips, friends], ([newClips, newFriends]) => {
   graphElements.value = buildGraphData(newClips, newFriends)
   saveState()
-}, { deep: true, debounce: 3000 })
+}, { deep: true, debounce: 2000 })
 
 function toggleFullscreen() {
   
@@ -226,7 +224,9 @@ async function saveState() {
       index: currentIndex.value,
       skipEnabled: skipEnabled.value,
       skipSeconds: skipSeconds.value,
-      friends: toRaw(friends.value)
+      friends: toRaw(friends.value),
+      graphVisible: graphVisible.value,
+      overlayHidden: overlayHidden.value
     },
   
   )
@@ -241,7 +241,7 @@ async function loadState() {
   return await window.electron.ipcRenderer.invoke('load-state')
 }
 
-watchDebounced([skipEnabled, skipSeconds], (newVals) => {
+watchDebounced([skipEnabled, skipSeconds, graphVisible, overlayHidden], (newVals) => {
   // console.log('skip prefs changed', newVals)
   saveState()
 }, { debounce: 2500 })
@@ -630,6 +630,7 @@ onUnmounted(() => {
     </div>
     <!-- ACTION BAR -->
     <div class="action-bar">
+      <div class="abar-left">
       <input
         v-model="editedName"
         class="rename-field"
@@ -637,6 +638,8 @@ onUnmounted(() => {
         @keyup.enter="renameClip"
 
       />
+      </div>
+      <div class="abar-right">
       <div class="action-buttons-group">
       <button class="abar-btn" @click="renameClip">Rename</button>
       <div class="divider" />
@@ -652,17 +655,36 @@ onUnmounted(() => {
       </div>
       <button class="abar-btn" v-if="isNodeSelected" @click="initClips(folder); isNodeSelected=false">Exit node</button>
       <button class="abar-btn" @click="toggleFriendsModal(true)">Define friends</button>
-      <button class="abar-btn" @click="toggleOverlay">
-        {{ overlayHidden ? 'Show overlay' : 'Hide overlay' }}
-      </button>
-      <button class="abar-btn" @click="toggleGraphView">
-        {{ graphVisible ? 'Hide graph view' : 'Toggle graph view' }}
-      </button>
+      <div class="dropdown" @mouseenter="isPreferencesButtonOpen = true" @mouseleave="isPreferencesButtonOpen = false">
+  <button class="abar-btn preferences-btn">Preferences 
+    <svg fill="white" version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
+	 width="8px" height="8px" style="padding-left: 2px;" viewBox="0 0 30.727 30.727"
+	 xml:space="preserve">
+<g>
+	<path d="M29.994,10.183L15.363,24.812L0.733,10.184c-0.977-0.978-0.977-2.561,0-3.536c0.977-0.977,2.559-0.976,3.536,0
+		l11.095,11.093L26.461,6.647c0.977-0.976,2.559-0.976,3.535,0C30.971,7.624,30.971,9.206,29.994,10.183z"/>
+</g>
+</svg>
+  </button>
+  <div class="dropdown-content" v-if="isPreferencesButtonOpen">
+      <div class="menu-item" @click="toggleOverlay">
+      <CheckIcon v-if="!overlayHidden" />
+      <div v-else style="width: 12px" />
+      Show overlay
+    </div>
+    <div class="menu-item" @click="toggleGraphView">
+      <CheckIcon v-if="graphVisible" />
+      <div v-else style="width: 12px" />
+      Graph view
+    </div>
+  </div>
+  </div>
+      
       <button class="abar-btn" @click="pickFolder">Change Folder</button>
       </div>
       <div class="divider" />
     </div>
-
+  </div>
     <!-- BOTTOM ROW -->
     <div class="bottom-row">
       <div class="queue-card">

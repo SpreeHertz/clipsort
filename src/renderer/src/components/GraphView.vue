@@ -21,7 +21,8 @@ const initCy = () => {
      style: [ // 'color' changes label color
         { selector: 'node.friend', style: { 
           'background-color': '#aaaab3', 
-          'label': 'data(label)', 
+          'label': 'data(label)',
+          'font-family': 'Geist, sans-serif',
           'color': '#c0c2c0' 
         }},
         { selector: 'node.diamond', style: {
