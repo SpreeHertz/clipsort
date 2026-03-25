@@ -241,7 +241,7 @@ async function loadState() {
   return await window.electron.ipcRenderer.invoke('load-state')
 }
 
-watchDebounced([skipEnabled, skipSeconds, graphVisible, overlayHidden], (newVals) => {
+watchDebounced([skipEnabled, skipSeconds, graphVisible, overlayHidden], () => {
   // console.log('skip prefs changed', newVals)
   saveState()
 }, { debounce: 2500 })
@@ -489,6 +489,8 @@ onMounted(async () => {
     // set these AFTER initClips so the watch doesn't overwrite them
     skipEnabled.value = state.skipEnabled ?? false
     skipSeconds.value = state.skipSeconds ?? 10
+    overlayHidden.value = state.overlayHidden ?? false
+    graphVisible.value = state.graphVisible ?? true
   }
 })
 
