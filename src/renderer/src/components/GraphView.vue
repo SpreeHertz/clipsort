@@ -62,6 +62,8 @@ watch(() => props.elements, (newElems) => {
     isNodeSelected.value = true
     emit('show-exit-node-btn', true)
     const node = evt.target
+    if (node.hasClass('solo')) return;
+    if (!props.currentFolder) return  // add this
     const id = node.id()
     let friendsArray = []
     let isFilterActive = false
@@ -74,7 +76,7 @@ watch(() => props.elements, (newElems) => {
       isFilterActive = true
       friendsArray = [id]
     }
-
+    console.log(props.currentFolder)
     // call the updated IPC handle
     const clips = await window.electron.ipcRenderer.invoke(
     'get-clips', 
@@ -82,7 +84,7 @@ watch(() => props.elements, (newElems) => {
     isFilterActive, 
     friendsArray
   )
-  
+  console.log(clips)
   emit('update-clips', clips)
   })
 }, { deep: true })

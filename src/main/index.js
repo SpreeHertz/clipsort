@@ -121,6 +121,7 @@ const killProcess = (proc) => {
 };
 
 ipcMain.handle('get-clips', async (_, folderPath, checkForFriends = false, friendsList = []) => {
+  if (!folderPath) return [] 
   const list = Array.isArray(friendsList) ? friendsList : []
   return getClipsRecursively(folderPath, checkForFriends, list)
 })

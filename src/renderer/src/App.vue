@@ -112,6 +112,7 @@ const addFriend = (name) => {
 
 watchDebounced([clips, friends], ([newClips, newFriends]) => {
   graphElements.value = buildGraphData(newClips, newFriends)
+   if (!newClips?.length || !newFriends?.length) return
   saveState()
 }, { deep: true, debounce: 2000 })
 
@@ -738,7 +739,7 @@ onUnmounted(() => {
         :current-folder="folder"
         @show-exit-node-btn="isNodeSelected=true"
         @update-clips="(newList) => { 
-            clips = newList.value; 
+            clips = newList; 
             currentIndex = 0; 
           }"
         style="flex: 1; 

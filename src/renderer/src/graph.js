@@ -4,7 +4,7 @@ export function buildGraphData(clips, friends) {
   const elements = []
 
   const lowerFriends = friends.map(f => f.toLowerCase())
-
+  if (!clips || !friends) return []
   // 1. First pass: Count everything
   for (const clip of clips) {
     const fileName = clip.split('\\').pop().toLowerCase().replace(/\.mp4$/i, '')
@@ -27,10 +27,13 @@ export function buildGraphData(clips, friends) {
     
     // Format: "alen (2)" if they have solo clips, otherwise just "alen"
     const displayLabel = soloCount > 0 ? `${friend} (${soloCount})` : friend
-
+    let isSolo = false
+    if (soloCount === 0) {
+      isSolo = true
+    }
     elements.push({ 
       data: { id: fKey, label: displayLabel }, 
-      classes: 'friend' 
+      classes: isSolo ? 'solo' : 'friend'
     })
   }
 
