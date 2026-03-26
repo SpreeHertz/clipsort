@@ -76,7 +76,6 @@ watch(() => props.elements, (newElems) => {
       isFilterActive = true
       friendsArray = [id]
     }
-    console.log(props.currentFolder)
     // call the updated IPC handle
     const clips = await window.electron.ipcRenderer.invoke(
     'get-clips', 
@@ -84,7 +83,6 @@ watch(() => props.elements, (newElems) => {
     isFilterActive, 
     friendsArray
   )
-  console.log(clips)
   emit('update-clips', clips)
   })
 }, { deep: true })

@@ -105,7 +105,6 @@ async function loadScrubThumbs() {
 const addFriend = (name) => {
   if (name && !friends.value.includes(name)) {
     friends.value.push(name)
-    console.log('from addFriend', friends.value)
 
   }
 }
@@ -114,7 +113,7 @@ watchDebounced([clips, friends], ([newClips, newFriends]) => {
   graphElements.value = buildGraphData(newClips, newFriends)
    if (!newClips?.length || !newFriends?.length) return
   saveState()
-}, { deep: true, debounce: 2000 })
+}, { deep: true, immediate: true, debounce: 700 })
 
 function toggleFullscreen() {
   
@@ -309,7 +308,7 @@ async function renameClip() {
   await nextTick()
   await new Promise((r) => setTimeout(r, 600))
   
-  console.log('renaming:', currentClip.value, '→', editedName.value)
+  //console.log('renaming:', currentClip.value, '→', editedName.value)
   const result = await window.electron.ipcRenderer.invoke(
     'rename-clip',
     currentClip.value,
