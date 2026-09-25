@@ -15,6 +15,7 @@ const getFFmpegPath = () => {
   }
 
   // in production, swap 'app.asar' for 'app.asar.unpacked'
+  // this is necessary for ffmpeg-static to work when the app is packaged
   return ffmpegStaticPath.replace('app.asar', 'app.asar.unpacked')
 }
 
@@ -181,6 +182,7 @@ ipcMain.handle('get-thumbnail', async (_, videoPath) => {
 
     activeQueueThumbProcess.on('close', (code) => {
       activeQueueThumbProcess = null;
+      killProcess(activeQueueThumbProcess);
       if (code === 0) resolve(outPath);
       else reject(new Error('ffmpeg failed'));
     });

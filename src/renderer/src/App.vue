@@ -558,7 +558,7 @@ onUnmounted(() => {
 
       <!-- controls: progress bar + transport -->
       <div class="controls-row">
-        <div class="progress-section">
+        <div class="progress-section" :class="[ isVideoFullScreen ? 'is-fs' : '' ]">
           <div class="progress-timestamps">
             <span class="duration-label">{{ currentTime }}</span>
             <span class="duration-label">{{ totalDuration }}</span>

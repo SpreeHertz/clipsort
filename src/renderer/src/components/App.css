@@ -598,6 +598,10 @@ input::-webkit-inner-spin-button {
   min-height: 20px; 
 }
 
+.progress-section.is-fs {
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
 
 .transport-row.is-fs {
   display: flex;
@@ -615,6 +619,7 @@ input::-webkit-inner-spin-button {
   position: absolute;
   left: 20px;
   width: 270px;
+  margin-top: 0.75em;
 }
 
 
