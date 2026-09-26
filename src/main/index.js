@@ -128,26 +128,46 @@ ipcMain.handle('get-clips', async (_, folderPath, checkForFriends = false, frien
 })
 
 ipcMain.handle('rename-clip', async (_, oldPath, newName) => {
-  if (!newName?.trim()) return { success: false, path: oldPath };
 
-  const dir = dirname(path.resolve(oldPath));
-  const ext = oldPath.toLowerCase().endsWith('.mp4')
-  const newPath = join(dir, newName.trim() + ext);
+  if (!newName?.trim()) {
+    return { success: false, path: oldPath };
+  }
+
+  const resolvedOldPath = path.resolve(oldPath);
+  const dir = dirname(path.resolve(resolvedOldPath));
+  // Preserve the original file extension
+  const ext = path.extname(resolvedOldPath);
+
+  const newPath = join(
+    dir,
+    newName.trim() + ext
+  );
 
   for (let i = 0; i < 5; i++) {
+
     try {
-      await fs.promises.rename(path.resolve(oldPath), path.resolve(newPath));
+      await fs.promises.rename(path.resolve(resolvedOldPath), path.resolve(newPath));
       return { success: true, path: newPath };
+
     } catch (err) {
-      console.error(err)
+      console.error(err);
       if (err.code === 'EBUSY' || err.code === 'EPERM') {
         await new Promise(r => setTimeout(r, 500 * (i + 1)));
       } else {
-        return { success: false, path: oldPath, error: err.message };
+        return {
+          success: false,
+          path: oldPath,
+          error: err.message
+        };
       }
     }
   }
-  return { success: false, path: oldPath, error: 'File is locked by another process.' };
+
+  return {
+    success: false,
+    path: oldPath,
+    error: 'File is locked by another process.'
+  };
 });
 
 ipcMain.handle('delete-clip', async (_, filePath) => {

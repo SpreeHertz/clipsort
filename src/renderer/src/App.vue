@@ -45,7 +45,7 @@ const alertType = ref('info')
 provide('isRenaming', isRenaming)
 
 // cards for temporary messages
-function showAlert(message, timer=3500, type='info') {
+function showAlert(message, timer=3500, type=null) {
   alertMessage.value = message
   alertType.value = type
   setTimeout(() => {
@@ -529,7 +529,7 @@ onUnmounted(() => {
   <!-- PLAYER -->
   <div v-else class="root">
     <div class="video-wrap" :class="{ 'is-fs': isVideoFullScreen }">
-      <div v-if="alertMessage" class="alert-card" :class="['alert', alertType]">{{ alertMessage }}</div>
+      <div v-if="alertMessage" class="alert-card" :class="alertType">{{ alertMessage }}</div>
       <video
         v-if="videoMounted"
         ref="videoEl"
