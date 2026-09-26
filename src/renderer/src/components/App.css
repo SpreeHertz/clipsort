@@ -78,6 +78,11 @@ body {
   backdrop-filter: blur(30px);
 }
 
+.alert-card.danger {
+   background: rgba(246, 52, 52, 0.548);
+  color: #fff;
+}
+
 /* ── PLAYER ── */
 .root {
   background: #000;

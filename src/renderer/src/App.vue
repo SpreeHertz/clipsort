@@ -40,11 +40,14 @@ const fsRenameEl = ref(null)
 const actionRenameEl = ref(null)
 const activeQueueItem = ref(null)
 const isPreferencesButtonOpen = ref(false)
+const alertType = ref('info')
+
 provide('isRenaming', isRenaming)
 
 // cards for temporary messages
-function showAlert(message, timer=3500) {
+function showAlert(message, timer=3500, type='info') {
   alertMessage.value = message
+  alertType.value = type
   setTimeout(() => {
     alertMessage.value = ''
   }, timer)
@@ -285,7 +288,7 @@ async function renameClip() {
       await window.electron.ipcRenderer.invoke('kill-ffmpeg');
       const invalid = /[\\/:*?"<>|]/
         if (invalid.test(editedName.value)) {
-            showAlert('Files cannot be renamed with this special character. Please remove it.')
+            showAlert(`Special character ${invalid.exec(editedName.value)[0]} isn't allowed. Please remove it.`, 5000, 'danger')
             return
   }
   const oldName = currentClip.value.split('\\').pop().replace(/\.mp4$/i, '')
@@ -316,7 +319,7 @@ async function renameClip() {
   )
 
   if (!result.success) {
-    showAlert('Could not rename. Try again.')
+    showAlert('Could not rename. Try again.', 4000, 'danger')
     videoMounted.value = true
     return
   }
@@ -365,7 +368,7 @@ async function deleteClip() {
   if (!result.success) {
     showAlert(
       'Could not delete — file still in use. Try again (Maybe try skipping to the last second then delete?)'
-    )
+    , 5000, 'danger')
     videoMounted.value = true
     return
   }
@@ -518,7 +521,7 @@ onUnmounted(() => {
   <div v-if="!clips.length" class="empty-state">
     <div class="empty-inner">
       <div class="empty-logo">Clip<span>Sort</span></div>
-      <p class="empty-sub">Your NVIDIA clips, sorted.</p>
+      <p class="empty-sub">Your clips, sorted.</p>
       <button class="pick-btn" @click="pickFolder">Choose Clips Folder</button>
     </div>
   </div>
@@ -526,7 +529,7 @@ onUnmounted(() => {
   <!-- PLAYER -->
   <div v-else class="root">
     <div class="video-wrap" :class="{ 'is-fs': isVideoFullScreen }">
-      <div v-if="alertMessage" class="alert-card">{{ alertMessage }}</div>
+      <div v-if="alertMessage" class="alert-card" :class="['alert', alertType]">{{ alertMessage }}</div>
       <video
         v-if="videoMounted"
         ref="videoEl"
@@ -641,6 +644,7 @@ onUnmounted(() => {
 
       />
       </div>
+      <!-- abar: action bar -->
       <div class="abar-right">
       <div class="action-buttons-group">
       <button class="abar-btn" @click="renameClip">Rename</button>

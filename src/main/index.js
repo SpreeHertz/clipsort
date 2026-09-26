@@ -182,7 +182,6 @@ ipcMain.handle('get-thumbnail', async (_, videoPath) => {
 
     activeQueueThumbProcess.on('close', (code) => {
       activeQueueThumbProcess = null;
-      killProcess(activeQueueThumbProcess);
       if (code === 0) resolve(outPath);
       else reject(new Error('ffmpeg failed'));
     });
